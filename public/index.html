@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>つぎて帳</title>
+  <link rel="stylesheet" href="/app.css" />
+</head>
+<body>
+  <main class="wrap" style="padding-bottom:40px">
+    <h1 style="font-size:34px;margin-top:28px">つぎて帳</h1>
+    <p class="lead" style="font-size:18px;color:var(--ink)">生産者が<b>話すだけ</b>で、段取りと判断のコツが<br><b>継ぐ人のノート</b>になる。</p>
+    <p class="lead">ノートに無いことは、AI が答えを作らずに本人に聞きます。答えは本人の言葉で、いつの話かまでたどれます。</p>
+
+    <a class="card accent" href="/tsugu" style="display:block;text-decoration:none;color:inherit">
+      <div class="small muted">継ぐ人（主役）</div>
+      <div style="font-size:22px;font-weight:700">健太さんの画面 →</div>
+      <div class="small">引き継ぎノートを読む・質問する</div>
+    </a>
+    <a class="card" href="/honnin" style="display:block;text-decoration:none;color:inherit">
+      <div class="small muted">生産者本人</div>
+      <div style="font-size:22px;font-weight:700">山野さんの画面 →</div>
+      <div class="small">押して話すだけ・次の作業（ログインなし）</div>
+    </a>
+    <a class="card" href="/both.html" style="display:block;text-decoration:none;color:inherit">
+      <div style="font-size:18px;font-weight:700">2つを並べて見る（パソコン向け）→</div>
+      <div class="small">健太さんが聞いた質問が、山野さんの「話す」に届く様子が見えます</div>
+    </a>
+
+    <div class="card">
+      <div class="small muted">はじめての方へ（3分）</div>
+      <ol style="margin:6px 0 0;padding-left:1.3em">
+        <li>健太さんの画面で「引き継ぎノート」を開く。かぼちゃは霜の前に、の話が山野さんの言葉で残っています</li>
+        <li>「質問する」で見本の「石灰はどのくらい…」を聞く → ノートに無いので本人に聞くリストへ</li>
+        <li>山野さんの画面で、その質問に話して答える（デモ用の「見本の話を入れる」でも可）</li>
+        <li>健太さんの画面に答えが届き、ノートが埋まる</li>
+      </ol>
+    </div>
+    <p><button class="btn ghost" id="reset">最初の状態に戻す（デモ用）</button> <span id="mode" class="small muted"></span></p>
+    <p class="notice">Built with Claude: Japan 2026 応募作品。人名・地名・数字はすべて架空のデモデータです。農業のやり方の助言はしません。</p>
+  </main>
+  <script type="module">
+    import { api } from '/common.js';
+    const st = await api('/api/state');
+    document.getElementById('mode').textContent = st.ctx.mode === 'claude' ? '整理：Claude' : '整理：見本（Claude 未接続）';
+    document.getElementById('reset').addEventListener('click', async () => {
+      if (!confirm('話した内容・質問を消して、最初の架空データに戻します。よろしいですか？')) return;
+      await api('/api/reset', {});
+      try { localStorage.clear(); } catch {}
+      location.reload();
+    });
+  </script>
+</body>
+</html>
