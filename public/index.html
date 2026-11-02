@@ -9,43 +9,55 @@
 <body>
   <main class="wrap" style="padding-bottom:40px">
     <h1 style="font-size:34px;margin-top:28px">つぎて帳</h1>
-    <p class="lead" style="font-size:18px;color:var(--ink)">生産者が<b>話すだけ</b>で、段取りと判断のコツが<br><b>継ぐ人のノート</b>になる。</p>
-    <p class="lead">ノートに無いことは、AI が答えを作らずに本人に聞きます。答えは本人の言葉で、いつの話かまでたどれます。</p>
+    <p class="lead" style="font-size:18px;color:var(--ink)">農家さんが<b>話すだけ</b>で、段取りと判断のコツが<b>継ぐ人と、地域の新人のノート</b>になる。</p>
+    <p class="lead">ノートに無いことは、AI が答えを作らず、いちばん近い農家さん1人に聞きます。答えは話した人の言葉で、誰がいつ話したかまでたどれます。だれに見せるかは、話した本人が決めます。</p>
 
-    <a class="card accent" href="/tsugu" style="display:block;text-decoration:none;color:inherit">
-      <div class="small muted">継ぐ人（主役）</div>
-      <div style="font-size:22px;font-weight:700">健太さんの画面 →</div>
-      <div class="small">引き継ぎノートを読む・質問する</div>
-    </a>
-    <a class="card" href="/honnin" style="display:block;text-decoration:none;color:inherit">
-      <div class="small muted">生産者本人</div>
-      <div style="font-size:22px;font-weight:700">山野さんの画面 →</div>
-      <div class="small">押して話すだけ・次の作業（ログインなし）</div>
-    </a>
-    <a class="card" href="/both.html" style="display:block;text-decoration:none;color:inherit">
-      <div style="font-size:18px;font-weight:700">2つを並べて見る（パソコン向け）→</div>
-      <div class="small">健太さんが聞いた質問が、山野さんの「話す」に届く様子が見えます</div>
-    </a>
+    <div id="links"><p class="muted">読み込み中…</p></div>
 
     <div class="card">
       <div class="small muted">はじめての方へ（3分）</div>
       <ol style="margin:6px 0 0;padding-left:1.3em">
-        <li>健太さんの画面で「引き継ぎノート」を開く。かぼちゃは霜の前に、の話が山野さんの言葉で残っています</li>
-        <li>「質問する」で見本の「石灰はどのくらい…」を聞く → ノートに無いので本人に聞くリストへ</li>
-        <li>山野さんの画面で、その質問に話して答える（デモ用の「見本の話を入れる」でも可）</li>
-        <li>健太さんの画面に答えが届き、ノートが埋まる</li>
+        <li>青木さん（研修生）の画面で「引き継ぎノート」を開く。町の3人の農家さんが見せてくれた言葉が並んでいます</li>
+        <li>「質問する」で見本の「かぼちゃはいつ…」を聞く → 2人の言葉が、近い人から順に出ます</li>
+        <li>「石灰はどのくらい…」を聞く → ノートに無いので、研修先の川端さん1人に届きます</li>
+        <li>川端さんの画面で、その質問に答える（デモ用の「見本の話を入れる」でも可）→ 青木さんに届きます</li>
+        <li>町の担当者の画面で、ノートで答えが出た数・聞ける人がいない作物を見る</li>
       </ol>
     </div>
     <p><button class="btn ghost" id="reset">最初の状態に戻す（デモ用）</button> <span id="mode" class="small muted"></span></p>
-    <p class="notice">Built with Claude: Japan 2026 応募作品。人名・地名・数字はすべて架空のデモデータです。農業のやり方の助言はしません。</p>
+    <p class="notice">Built with Claude: Japan 2026 応募作品。人名・地名・数字はすべて架空のデモデータです。農業のやり方の助言はしません。
+    デモなので、この入口に全員の専用リンクを並べています。実際に使うときは、町が一人ひとりに専用リンク（QR カード）を配ります。</p>
   </main>
   <script type="module">
-    import { api } from '/common.js';
-    const st = await api('/api/state');
-    document.getElementById('mode').textContent = st.ctx.mode === 'claude' ? '整理：Claude' : '整理：見本（Claude 未接続）';
+    import { esc } from '/common.js';
+    const box = document.getElementById('links');
+    const res = await fetch('/api/demo-links');
+    if (!res.ok) {
+      box.innerHTML = '<p class="muted">専用リンクは、町から配られたものを使ってください。</p>';
+    } else {
+      const people = await res.json();
+      const url = (p) => `${p.role === 'producer' ? '/honnin' : p.role === 'town' ? '/machi' : '/tsugu'}?k=${encodeURIComponent(p.key)}`;
+      const card = (p, sub, big = false) => `<a class="card ${big ? 'accent' : ''}" href="${url(p)}" style="display:block;text-decoration:none;color:inherit">
+          <div class="small muted">${esc(sub)}</div>
+          <div style="font-size:${big ? 22 : 19}px;font-weight:700">${esc(p.label)}の画面 →</div>
+          <div class="small">${esc(p.title)}</div></a>`;
+      const by = (role) => people.filter((p) => p.role === role);
+      const ids = Object.fromEntries(people.map((p) => [p.id, p.key]));
+      box.innerHTML = `
+        ${by('newcomer').map((p) => card(p, '新しく農業を始めた人（主役）', true)).join('')}
+        ${by('family').map((p) => card(p, '家を継ぐ人')).join('')}
+        <h2>農家さん本人（押して話すだけ・ログインなし）</h2>
+        ${by('producer').map((p) => card(p, '本人')).join('')}
+        <h2>町</h2>
+        ${by('town').map((p) => card(p, '町の担当者（数だけを見る）')).join('')}
+        <a class="card" href="/both.html#${encodeURIComponent(JSON.stringify({ a: ids.p6, b: ids.p5, c: ids.town }))}" style="display:block;text-decoration:none;color:inherit">
+          <div style="font-size:18px;font-weight:700">3つを並べて見る（パソコン向け）→</div>
+          <div class="small">青木さんの質問が川端さんの「話す」に届き、答えが返り、町の数が変わる様子が見えます</div></a>`;
+    }
     document.getElementById('reset').addEventListener('click', async () => {
       if (!confirm('話した内容・質問を消して、最初の架空データに戻します。よろしいですか？')) return;
-      await api('/api/reset', {});
+      const r = await fetch('/api/reset', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+      if (!r.ok) return alert('戻せませんでした');
       try { localStorage.clear(); } catch {}
       location.reload();
     });

@@ -6,16 +6,25 @@
   <title>つぎて帳｜並べて見る</title>
   <link rel="stylesheet" href="/app.css" />
   <style>
-    .pair { display: flex; gap: 28px; justify-content: center; padding: 16px; flex-wrap: wrap; }
+    .pair { display: flex; gap: 22px; justify-content: center; padding: 16px; flex-wrap: wrap; }
     .phone { text-align: center; }
     .phone iframe { width: 390px; height: 780px; border: 1px solid var(--line); border-radius: 28px; background: #fff; }
     .phone .label { font-weight: 700; margin-bottom: 6px; }
   </style>
 </head>
 <body>
-  <div class="pair">
-    <div class="phone"><div class="label">継ぐ人：健太さん</div><iframe src="/tsugu" title="健太さんの画面"></iframe></div>
-    <div class="phone"><div class="label">本人：山野さん</div><iframe src="/honnin" title="山野さんの画面" allow="microphone"></iframe></div>
-  </div>
+  <div class="pair" id="pair"><p class="muted">デモの入口から開いてください。</p></div>
+  <script>
+    // 専用リンクの合言葉は # のあとに入れて渡す（サーバーの記録に残らないように）
+    let k = {};
+    try { k = JSON.parse(decodeURIComponent(location.hash.slice(1)) || '{}'); } catch {}
+    const q = (s) => encodeURIComponent(s || '');
+    if (k.a && k.b) {
+      document.getElementById('pair').innerHTML = `
+        <div class="phone"><div class="label">新人：青木さん</div><iframe src="/tsugu?k=${q(k.a)}" title="青木さんの画面" allow="microphone"></iframe></div>
+        <div class="phone"><div class="label">本人：川端さん</div><iframe src="/honnin?k=${q(k.b)}" title="川端さんの画面" allow="microphone"></iframe></div>
+        ${k.c ? `<div class="phone"><div class="label">町の担当者</div><iframe src="/machi?k=${q(k.c)}" title="町の担当者の画面"></iframe></div>` : ''}`;
+    }
+  </script>
 </body>
 </html>
