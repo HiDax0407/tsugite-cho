@@ -66,6 +66,18 @@ const routes = {
   },
 };
 
+// ほかのサイトから書き込まれないように：JSON で、同じ場所の画面から来たものだけ受ける
+function sameOrigin(req) {
+  if (!String(req.headers['content-type'] || '').startsWith('application/json')) return false;
+  const site = req.headers['sec-fetch-site'];
+  if (site && site !== 'same-origin' && site !== 'none') return false;
+  const origin = req.headers.origin;
+  if (origin && new URL(origin).host !== req.headers.host) return false;
+  // 手元で動かすときは、localhost 以外の名前で来たもの（DNS の付け替え）を断る
+  if (HOST === '127.0.0.1' && !/^(localhost|127\.0\.0\.1)(:\d+)?$/.test(req.headers.host || '')) return false;
+  return true;
+}
+
 const PAGES = { '/': 'index.html', '/honnin': 'honnin.html', '/tsugu': 'tsugu.html' };
 
 const server = createServer(async (req, res) => {
@@ -73,6 +85,7 @@ const server = createServer(async (req, res) => {
   const key = `${req.method} ${url.pathname}`;
   try {
     if (routes[key]) {
+      if (req.method === 'POST' && !sameOrigin(req)) return send(res, 403, { error: 'この画面からだけ使えます' });
       const body = req.method === 'POST' ? await readJson(req) : null;
       return send(res, 200, await routes[key](body));
     }
