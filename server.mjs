@@ -73,9 +73,15 @@ function sameOrigin(req) {
   if (site && site !== 'same-origin' && site !== 'none') return false;
   const origin = req.headers.origin;
   if (origin && new URL(origin).host !== req.headers.host) return false;
-  // 手元で動かすときは、localhost 以外の名前で来たもの（DNS の付け替え）を断る
-  if (HOST === '127.0.0.1' && !/^(localhost|127\.0\.0\.1)(:\d+)?$/.test(req.headers.host || '')) return false;
   return true;
+}
+
+// 決まった名前で来たものだけ受ける（DNS の付け替えで、ほかのサイトから読み書きされないように）
+// 公開するときは PUBLIC_HOST に公開先の名前を入れる
+const ALLOWED_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]', ...String(process.env.PUBLIC_HOST || '').split(',').filter(Boolean)]);
+function hostOk(req) {
+  const host = String(req.headers.host || '').replace(/:\d+$/, '');
+  return ALLOWED_HOSTS.has(host);
 }
 
 const PAGES = { '/': 'index.html', '/honnin': 'honnin.html', '/tsugu': 'tsugu.html' };
@@ -84,6 +90,7 @@ const server = createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
   const key = `${req.method} ${url.pathname}`;
   try {
+    if (!hostOk(req)) return send(res, 421, { error: 'この名前では使えません' });
     if (routes[key]) {
       if (req.method === 'POST' && !sameOrigin(req)) return send(res, 403, { error: 'この画面からだけ使えます' });
       const body = req.method === 'POST' ? await readJson(req) : null;
