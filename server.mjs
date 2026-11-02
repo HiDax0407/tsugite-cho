@@ -54,10 +54,12 @@ async function readJson(req) {
 }
 
 const routes = {
-  'GET /api/state': () => store.view(),
+  // 見る人ごとに、見てよいものだけ返す（as：本人・継ぐ人・新人の id、または town）
+  'GET /api/state': (_, url) => store.view(url.searchParams.get('as') || 'p2'),
   'GET /api/demo': () => demo,
-  'POST /api/talk': async (body) => store.talk({ text: body.text, questionId: body.questionId || null }),
-  'POST /api/ask': async (body) => store.ask({ text: body.text }),
+  'POST /api/talk': async (body) => store.talk({ producerId: body.producerId || 'p1', text: body.text, questionId: body.questionId || null }),
+  'POST /api/ask': async (body) => store.ask({ askerId: body.askerId || 'p2', text: body.text }),
+  'POST /api/share': async (body) => store.setShare({ talkId: body.talkId, share: body.share }),
   'POST /api/later': async (body) => store.later(body.questionId),
   'POST /api/done': async (body) => store.setDone(body.taskId, body.done),
   'POST /api/reset': async () => {
@@ -84,7 +86,7 @@ function hostOk(req) {
   return ALLOWED_HOSTS.has(host);
 }
 
-const PAGES = { '/': 'index.html', '/honnin': 'honnin.html', '/tsugu': 'tsugu.html' };
+const PAGES = { '/': 'index.html', '/honnin': 'honnin.html', '/tsugu': 'tsugu.html', '/machi': 'machi.html' };
 
 const server = createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
@@ -94,7 +96,7 @@ const server = createServer(async (req, res) => {
     if (routes[key]) {
       if (req.method === 'POST' && !sameOrigin(req)) return send(res, 403, { error: 'この画面からだけ使えます' });
       const body = req.method === 'POST' ? await readJson(req) : null;
-      return send(res, 200, await routes[key](body));
+      return send(res, 200, await routes[key](body, url));
     }
     if (req.method !== 'GET') return send(res, 404, { error: 'ありません' });
     const rel = PAGES[url.pathname] || normalize(decodeURIComponent(url.pathname)).replace(/^([/\\])+/, '');
@@ -109,5 +111,5 @@ const server = createServer(async (req, res) => {
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`つぎて帳：http://localhost:${PORT}  （整理：${store.view().ctx.mode}）`);
+  console.log(`つぎて帳：http://localhost:${PORT}  （整理：${store.view('p2').ctx.mode}）`);
 });

@@ -2,6 +2,7 @@
 // どちらでも守ること：本人の言葉は書き換えない／ノートに無いことは答えない／農業の助言はしない。
 
 import * as rules from './rules.mjs';
+import * as region from './region.mjs';
 import * as claude from './claude.mjs';
 
 export function mode() {
@@ -20,16 +21,17 @@ export async function organize(talk, ctx) {
   return rules.organizeTalk(talk, ctx);
 }
 
-// 継ぐ人の質問 → ノートにあれば本人の言葉、無ければ答えない
-export async function answer(questionText, lines, ctx) {
+// 継ぐ人・新人の質問 → 見えるノートの中に答えがあれば、近い人の言葉から順に。無ければ答えない
+//   args = { notes, producers, viewer, crops }
+export async function answer(questionText, args) {
   if (claude.enabled()) {
     try {
-      return await claude.answer(questionText, lines, ctx);
+      return await claude.answer(questionText, args);
     } catch (e) {
       console.error('Claude の照合に失敗したので見本の規則で続けます：', e.message);
     }
   }
-  return rules.findAnswer(questionText, lines, ctx.crops);
+  return region.findAcross(questionText, args);
 }
 
 // 本人への聞き返し（1回に1つ）
@@ -53,5 +55,5 @@ export async function rephrase(question, ctx) {
       console.error('Claude の言い換えに失敗したので、質問をそのまま伝えます：', e.message);
     }
   }
-  return `${ctx.successorName}さんが聞きたいそうです。「${question.text}」`;
+  return `${question.askerVoice}が聞きたいそうです。「${question.text}」`;
 }

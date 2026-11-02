@@ -1,49 +1,57 @@
-// つぎて帳の記録（話・ノートの行・作業カード・継ぐ人の質問）。
-// 最初はキックオフ前に作った架空の聞き取り（data/prepared/）から作り、動かした分は data/runtime/ に残す。
+// つぎて帳の記録（本人ごとの話・ノートの行・作業カード、継ぐ人・新人の質問）。
+// 最初は架空のデモデータ（data/prepared/ と data/region_demo.json）から作り、動かした分は data/runtime/ に残す。
+// 見る人ごとに、見てよいものだけを返す（本人が決めた見せる範囲を守る）。
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as brain from './brain.mjs';
+import { SHARE, SHARE_KEYS, shareOf, canSee, routeTo } from './region.mjs';
+import { COMMON_CROPS } from './rules.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SEED = join(ROOT, 'data', 'prepared', 'tsugite_producer.json');
+const REGION = join(ROOT, 'data', 'region_demo.json');
+const VERSION = 2;
 
 export function todayJST(now = new Date()) {
   return new Date(now.getTime() + 9 * 3600 * 1000).toISOString().slice(0, 10);
 }
 
-function personName(p) {
-  return p.name.replace(/（.*?）/g, '').trim();
-}
-function givenName(p) {
-  return personName(p).split(/\s+/).pop();
-}
-
-export function createStore({ file = join(ROOT, 'data', 'runtime', 'state.json'), seedFile = SEED, today = todayJST } = {}) {
+export function createStore({
+  file = join(ROOT, 'data', 'runtime', 'state.json'),
+  seedFile = SEED,
+  regionFile = REGION,
+  today = todayJST,
+} = {}) {
   const seed = JSON.parse(readFileSync(seedFile, 'utf8'));
-  const producer = seed.people.find((p) => p.role === '生産者本人');
-  const successor = seed.people.find((p) => p.role.startsWith('継ぐ人'));
-  const ctx = {
-    crops: seed.farm.crops,
-    people: seed.people,
-    producerName: personName(producer).split(/\s+/)[0], // 本人は名字で「山野さん」
-    successorName: givenName(successor), // 継ぐ人は名前で「健太さん」（同じ名字のため）
-  };
+  const reg = JSON.parse(readFileSync(regionFile, 'utf8'));
+  const people = [...seed.people, ...reg.people];
+  const producers = reg.producers.map((p) => ({ ...p, crops: p.crops || seed.farm.crops }));
+  const viewers = reg.viewers;
+  const town = { ...reg.town, role: 'town' };
+  const crops = [...new Set([...producers.flatMap((p) => p.crops), ...COMMON_CROPS])];
+  const producerOf = (id) => producers.find((p) => p.id === id);
+  const viewerOf = (id) => viewers.find((v) => v.id === id);
+
   let state = null;
   let counter = 0;
   const nextId = (p) => `${p}${++counter}`;
+  const talkOf = (id) => state.talks.find((t) => t.id === id);
+  const qOf = (id) => state.questions.find((q) => q.id === id);
 
   function save() {
     if (!file) return;
     mkdirSync(dirname(file), { recursive: true });
-    writeFileSync(file, JSON.stringify({ counter, state }, null, 2));
+    writeFileSync(file, JSON.stringify({ version: VERSION, counter, state }, null, 2));
   }
 
   async function addOrganized(talk, opts = {}) {
-    const { lines, tasks } = await brain.organize(talk, { ...ctx, startCrop: opts.startCrop || null });
-    const newLines = lines.map((l) => ({ id: nextId('n'), ...l, talkId: talk.id, date: talk.date, answersQuestionId: opts.questionId || null }));
-    const newTasks = tasks.map((t) => ({ id: nextId('k'), ...t, talkId: talk.id, date: talk.date, done: false, doneAt: null }));
+    const p = producerOf(talk.producerId);
+    const { lines, tasks } = await brain.organize(talk, { crops: p.crops, people, ownerName: p.label, startCrop: opts.startCrop || null });
+    const base = { talkId: talk.id, producerId: talk.producerId, date: talk.date };
+    const newLines = lines.map((l) => ({ id: nextId('n'), ...l, ...base, answersQuestionId: opts.questionId || null }));
+    const newTasks = tasks.map((t) => ({ id: nextId('k'), ...t, ...base, done: false, doneAt: null }));
     state.notes.push(...newLines);
     state.tasks.push(...newTasks);
     return { newLines, newTasks };
@@ -51,16 +59,13 @@ export function createStore({ file = join(ROOT, 'data', 'runtime', 'state.json')
 
   async function reset() {
     counter = 0;
-    state = {
-      farm: seed.farm,
-      people: seed.people,
-      talks: [],
-      notes: [],
-      tasks: [],
-      questions: [],
-    };
-    for (const t of seed.talks) {
-      const talk = { ...t, source: 'prepared' };
+    state = { talks: [], notes: [], tasks: [], questions: [] };
+    const all = [
+      ...seed.talks.map((t) => ({ ...t, producerId: 'p1', share: reg.seed_share[t.id] || 'family' })),
+      ...reg.talks,
+    ].sort((a, b) => a.date.localeCompare(b.date));
+    for (const t of all) {
+      const talk = { ...t, speaker: t.producerId, source: 'prepared' };
       state.talks.push(talk);
       await addOrganized(talk);
     }
@@ -70,44 +75,65 @@ export function createStore({ file = join(ROOT, 'data', 'runtime', 'state.json')
   async function load() {
     if (file && existsSync(file)) {
       const saved = JSON.parse(readFileSync(file, 'utf8'));
-      counter = saved.counter;
-      state = saved.state;
-    } else {
-      await reset();
+      if (saved.version === VERSION) {
+        counter = saved.counter;
+        state = saved.state;
+        return;
+      }
     }
+    await reset(); // 古い形の記録は使わない
   }
 
-  function askList() {
-    return state.questions.filter((q) => q.status === '本人に聞く');
+  function askListFor(producerId) {
+    return state.questions.filter((q) => q.status === '本人に聞く' && q.toId === producerId);
   }
 
-  // 本人が話す。questionId があれば、継ぐ人の質問への答えとして残す
-  async function talk({ text, questionId = null }) {
+  function notesFor(viewer) {
+    return state.notes.filter((n) =>
+      canSee({ talk: talkOf(n.talkId), viewer, question: n.answersQuestionId ? qOf(n.answersQuestionId) : null }),
+    );
+  }
+
+  // 本人が話す。questionId があれば、その質問への答えとして残す
+  async function talk({ producerId = 'p1', text, questionId = null }) {
+    const p = producerOf(producerId);
+    if (!p) throw new Error('この本人は登録されていません');
     const clean = String(text || '').trim();
     if (!clean) throw new Error('話が空です');
-    const q = questionId ? state.questions.find((x) => x.id === questionId && x.status === '本人に聞く') : null;
-    const talk = { id: nextId('t'), date: today(), speaker: 'p1', text: clean, source: 'app', answersQuestionId: q ? q.id : null };
-    state.talks.push(talk);
-    // 答えの作物：質問に作物の名前があればそれ、無ければ質問に近いノートの行の作物
-    const nearCrop = q?.relatedIds?.length ? state.notes.find((n) => n.id === q.relatedIds[0])?.crop : null;
-    const startCrop = q ? ctx.crops.find((c) => q.text.includes(c)) || (nearCrop !== '畑全体' ? nearCrop : null) || null : null;
-    const { newLines, newTasks } = await addOrganized(talk, { questionId: q?.id, startCrop });
+    const q = questionId ? state.questions.find((x) => x.id === questionId && x.status === '本人に聞く' && x.toId === producerId) : null;
+    const t = { id: nextId('t'), producerId, date: today(), speaker: producerId, text: clean, source: 'app', share: 'family', answersQuestionId: q ? q.id : null };
+    state.talks.push(t);
+    // 答えの作物：質問の作物（本人が作っていれば）→ 質問に近いノートの行の作物
+    let startCrop = null;
+    if (q) {
+      const near = (q.relatedIds || []).map((id) => state.notes.find((n) => n.id === id)).find((n) => n && n.crop !== '畑全体' && p.crops.includes(n.crop));
+      startCrop = (q.crop && p.crops.includes(q.crop) ? q.crop : null) || near?.crop || null;
+    }
+    const { newLines, newTasks } = await addOrganized(t, { questionId: q?.id, startCrop });
     if (q) {
       q.status = '答えあり';
-      q.answeredAt = talk.date;
-      q.answerTalkId = talk.id;
+      q.answeredAt = t.date;
+      q.answerTalkId = t.id;
       q.answerNoteIds = newLines.map((l) => l.id);
     }
-    const next = await brain.followup({ askList: askList(), newTasks, newLines, successorName: ctx.successorName });
-    if (next && next.questionId) {
-      const nq = state.questions.find((x) => x.id === next.questionId);
-      next.text = await brain.rephrase(nq, ctx);
-    }
+    const next = await brain.followup({ askList: askListFor(producerId), newTasks, newLines, successorName: '' });
+    if (next && next.questionId) next.text = await brain.rephrase(qOf(next.questionId), {});
     save();
-    return { talk, newLines, newTasks, answeredQuestion: q || null, followup: next };
+    const asker = q ? viewerOf(q.askerId) : null;
+    return { talk: t, newLines, newTasks, answeredQuestion: q || null, askerLabel: asker?.label || null, followup: next };
   }
 
-  // 本人が「今はわからん」→ その質問はリストの最後へ回す
+  // 見せる範囲を本人が決める（話ごと）
+  function setShare({ talkId, share }) {
+    if (!SHARE_KEYS.includes(share)) throw new Error('見せる範囲が正しくありません');
+    const t = talkOf(talkId);
+    if (!t) throw new Error('話が見つかりません');
+    t.share = share;
+    save();
+    return { talkId, share };
+  }
+
+  // 本人が「今はわからん」→ その質問はその本人のリストの最後へ回す
   function later(questionId) {
     const i = state.questions.findIndex((x) => x.id === questionId);
     if (i < 0) throw new Error('質問が見つかりません');
@@ -118,21 +144,35 @@ export function createStore({ file = join(ROOT, 'data', 'runtime', 'state.json')
     return q;
   }
 
-  // 継ぐ人が聞く。ノートにあれば本人の言葉で、無ければ本人に聞くリストへ
-  async function ask({ text }) {
+  // 継ぐ人・新人が聞く。見えるノートにあれば本人の言葉で、無ければいちばん近い本人1人に聞く
+  async function ask({ askerId = 'p2', text }) {
+    const v = viewerOf(askerId);
+    if (!v) throw new Error('この人は登録されていません');
     const clean = String(text || '').trim();
     if (!clean) throw new Error('質問が空です');
-    const result = await brain.answer(clean, state.notes, ctx);
+    const result = await brain.answer(clean, { notes: notesFor(v), producers, viewer: v, crops });
     const q = {
       id: nextId('q'),
       date: today(),
-      speaker: 'p2',
+      askerId,
+      askerVoice: v.voiceLabel,
       text: clean,
-      status: result.answered ? 'ノートにあった' : '本人に聞く',
-      noteIds: (result.quotes || []).map((l) => l.id),
+      crop: result.crop || null,
+      status: 'ノートにあった',
+      sources: result.sources || [],
+      noteIds: (result.sources || []).flatMap((s) => s.noteIds),
       relatedIds: (result.related || []).map((l) => l.id),
       missing: result.missing || null,
+      toId: null,
+      toReasons: [],
     };
+    if (!result.answered) {
+      const relatedProducerIds = [...new Set((result.related || []).map((l) => l.producerId))];
+      const r = routeTo(clean, { producers, viewer: v, crops, relatedProducerIds });
+      q.toId = r.producerId;
+      q.toReasons = r.reasons;
+      q.status = r.producerId ? '本人に聞く' : '聞ける人がいない';
+    }
     state.questions.push(q);
     save();
     return q;
@@ -147,9 +187,101 @@ export function createStore({ file = join(ROOT, 'data', 'runtime', 'state.json')
     return t;
   }
 
-  function view() {
-    return { ...state, ctx: { ...ctx, mode: brain.mode(), today: today() } };
+  // 町の画面：数だけ。言葉は本人が「町にも」とした話だけ。質問した人の名前は出さない
+  function townStats() {
+    const districts = [...new Set(producers.map((p) => p.district))];
+    const byDistrict = districts.map((d) => {
+      const ids = producers.filter((p) => p.district === d).map((p) => p.id);
+      const notes = state.notes.filter((n) => ids.includes(n.producerId));
+      return {
+        district: d,
+        producers: ids.length,
+        talks: state.talks.filter((t) => ids.includes(t.producerId)).length,
+        lines: notes.length,
+        shared: notes.filter((n) => shareOf(talkOf(n.talkId)) !== 'family').length,
+      };
+    });
+    const cropNames = [...new Set([...producers.flatMap((p) => p.crops), ...state.questions.map((q) => q.crop).filter(Boolean)])];
+    const byCrop = cropNames.map((c) => ({
+      crop: c,
+      growers: producers.filter((p) => p.crops.includes(c)).length,
+      lines: state.notes.filter((n) => n.crop === c).length,
+      asked: state.questions.filter((q) => q.crop === c).length,
+      waiting: state.questions.filter((q) => q.crop === c && q.status === '本人に聞く').length,
+      noOne: state.questions.filter((q) => q.crop === c && q.status === '聞ける人がいない').length,
+    }));
+    const count = (s) => state.questions.filter((q) => q.status === s).length;
+    const shares = Object.fromEntries(SHARE_KEYS.map((k) => [k, state.notes.filter((n) => shareOf(talkOf(n.talkId)) === k).length]));
+    return {
+      producers: producers.length,
+      trainers: producers.filter((p) => p.takesTrainees).length,
+      newcomers: viewers.filter((v) => v.role === 'newcomer').length,
+      talks: state.talks.length,
+      lines: state.notes.length,
+      shares,
+      questions: {
+        total: state.questions.length,
+        inNote: count('ノートにあった'),
+        answered: count('答えあり'),
+        waiting: count('本人に聞く'),
+        noOne: count('聞ける人がいない'),
+      },
+      noOneList: state.questions.filter((q) => q.status === '聞ける人がいない').map((q) => ({ date: q.date, crop: q.crop, text: q.text })),
+      byDistrict,
+      byCrop,
+    };
   }
 
-  return { load, reset, talk, ask, later, setDone, view, askList };
+  function ctx() {
+    return {
+      mode: brain.mode(),
+      today: today(),
+      town: { name: town.name, section: town.section },
+      shareNames: SHARE,
+      producers: producers.map(({ id, label, district, years, crops: c, takesTrainees }) => ({ id, label, district, years, crops: c, takesTrainees: !!takesTrainees })),
+      viewers: viewers.map(({ id, label, title, role, district }) => ({ id, label, title, role, district })),
+    };
+  }
+
+  // 見る人ごとの中身。as：本人の id／継ぐ人・新人の id／'town'
+  function view(as = 'p2') {
+    const p = producerOf(as);
+    if (p) {
+      return {
+        role: 'producer',
+        me: p,
+        talks: state.talks.filter((t) => t.producerId === as),
+        notes: state.notes.filter((n) => n.producerId === as),
+        tasks: state.tasks.filter((t) => t.producerId === as),
+        questions: state.questions.filter((q) => q.toId === as && (q.status === '本人に聞く' || q.status === '答えあり')),
+        ctx: ctx(),
+      };
+    }
+    const v = viewerOf(as);
+    if (v) {
+      const notes = notesFor(v);
+      const ids = new Set(notes.map((n) => n.talkId));
+      return {
+        role: v.role,
+        me: v,
+        talks: state.talks.filter((t) => ids.has(t.id)),
+        notes,
+        questions: state.questions.filter((q) => q.askerId === as),
+        ctx: ctx(),
+      };
+    }
+    if (as === 'town') {
+      const notes = notesFor(town);
+      const ids = new Set(notes.map((n) => n.talkId));
+      return { role: 'town', me: { label: town.label }, talks: state.talks.filter((t) => ids.has(t.id)), notes, stats: townStats(), ctx: ctx() };
+    }
+    throw new Error('見る人が正しくありません');
+  }
+
+  // テスト用：全部
+  function all() {
+    return state;
+  }
+
+  return { load, reset, talk, ask, later, setDone, setShare, view, all, askListFor };
 }

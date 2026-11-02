@@ -40,12 +40,15 @@ const NOT_TAUGHT = /(教えとらん|教えてない|教えていない|まだ�
 const HARD = /(難しい|むずかしい|コツがいる)/;
 const ACTION = /(とる|掘|抜|まく|ふる|ふって|寝かせ|出す|切り直す|片付け|頼む|言う|言わん|植え|刈|干す|運ぶ|箱|洗)/;
 
+// 質問に出てくる作物を見分けるための名前（地域の誰も作っていない作物でも「聞ける人がいない」と分かるように）
+export const COMMON_CROPS = ['オクラ', 'かぼちゃ', 'さつまいも', '里芋', 'ピーマン', 'にんにく', 'たまねぎ', '玉ねぎ', 'トマト', 'なす', 'きゅうり', 'キャベツ', '白菜', '大根', 'ねぎ', 'じゃがいも', 'いちご', 'ほうれん草', 'ブロッコリー', 'にんじん', 'しょうが', '米'];
+
 export function detectCrop(sentence, crops) {
   return crops.find((c) => sentence.includes(c)) || null;
 }
 
 // 1つの話 → 文ごとの行（ノート用）と作業カードの候補
-export function organizeTalk(talk, { crops, people, startCrop = null }) {
+export function organizeTalk(talk, { crops, people, startCrop = null, ownerName = '山野さん' }) {
   // 「さくらさんにも頼める」→ 前の作業の担当の候補にする（名簿にいる人だけ）
   const given = (people || []).map((p) => p.name.replace(/（.*?）/g, '').trim().split(/\s+/).pop());
   const sentences = splitSentences(talk.text);
@@ -88,7 +91,7 @@ export function organizeTalk(talk, { crops, people, startCrop = null }) {
     // 作業カード：期限・言い切りの作業・「〜たら」で前の作業に続くもの・条件つきのもの
     const delegate = /頼め|頼む|任せ/.test(s) && given.find((g) => s.includes(`${g}さん`));
     if (delegate && prevTask) {
-      prevTask.who = `山野さん（${delegate}さんにも頼めるかも・本人の話）`;
+      prevTask.who = `${ownerName}（${delegate}さんにも頼めるかも・本人の話）`;
       prevLine = line;
       return;
     }
@@ -117,7 +120,7 @@ export function organizeTalk(talk, { crops, people, startCrop = null }) {
         context: prevLine && prevLine.kind === 'いまの様子' ? prevLine.quote : null,
         when: task.when,
         type: task.type,
-        who: '山野さん',
+        who: ownerName,
       };
       tasks.push(t);
       prevTask = t;
@@ -197,7 +200,7 @@ export function findAnswer(questionText, noteLines, crops) {
 export function pickFollowup({ askList, newTasks, newLines, successorName }) {
   if (askList.length > 0) {
     const q = askList[0];
-    return { type: '継ぐ人の質問', questionId: q.id, text: `${successorName}さんが聞きたいそうです。「${q.text}」` };
+    return { type: '継ぐ人の質問', questionId: q.id, text: `${q.askerVoice || `${successorName}さん`}が聞きたいそうです。「${q.text}」` };
   }
   const noWhen = newTasks.find((t) => t.when === 'できるだけ早く');
   if (noWhen) return { type: '時期', text: `「${noWhen.quote}」は、いつごろやりますか？` };
