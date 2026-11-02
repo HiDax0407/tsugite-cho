@@ -1,6 +1,7 @@
 // 本人（農家さん）の画面：話す／次の作業／話したこと。打つ・覚える操作をさせない。
 // 見せる範囲だけは本人が決める（大きなボタン3つから選ぶ。最初は「家族だけ」）。
 import { api, esc, speak, makeListener, MIC_SVG, poll, KEY, noKey, when } from '/common.js';
+import { paintMode, setBy } from '/common.js';
 
 const main = document.getElementById('main');
 let st = null;
@@ -144,7 +145,7 @@ function render() {
   if (!st) return;
   document.getElementById('who').textContent = `${me().label}の画面`;
   document.title = `つぎて帳｜${me().label}`;
-  document.getElementById('mode').textContent = st.ctx.mode === 'claude' ? '整理：Claude' : '整理：見本（Claude 未接続）';
+  paintMode(st.ctx.mode === 'claude' ? '整理：Claude' : '整理：見本（Claude 未接続）');
   const n = st.tasks.filter((t) => !t.done).length;
   document.getElementById('taskCount').innerHTML = n ? `<span class="badge">${n}</span>` : '';
   for (const b of document.querySelectorAll('.tabs button')) b.setAttribute('aria-selected', String(b.dataset.tab === tab));
@@ -186,6 +187,7 @@ async function save(text) {
   const q = currentQuestion();
   const r = await api('/api/talk', { text, questionId: q ? q.id : null, hintCrop: !q && gapQuestion ? gapQuestion.crop || null : null });
   reply = replyOf(r);
+  setBy(r.by);
   heard = '';
   phase = 'saved';
   await refresh();

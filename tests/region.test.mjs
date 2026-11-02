@@ -58,10 +58,12 @@ test('ノートに無ければ答えを作らず、いちばん近い本人1人�
 
 test('地域の誰も作っていない作物は「聞ける人がいない」になり、町の数に出る（名前は出さない）', async () => {
   const s = await fresh();
-  const q = await s.ask({ askerId: 'p6', text: 'にんにくはいつ植えればいいですか？' });
+  // 最初の状態に、前から聞いてあった「にんにく」が1つ入っている（町の画面の見本）
+  assert.equal(s.view('town').stats.questions.noOne, 1);
+  const q = await s.ask({ askerId: 'p6', text: 'しょうがはいつ植えればいいですか？' });
   assert.equal(q.status, '聞ける人がいない');
   const st = s.view('town').stats;
-  assert.equal(st.questions.noOne, 1);
+  assert.equal(st.questions.noOne, 2);
   assert.equal(st.byCrop.find((c) => c.crop === 'にんにく').growers, 0);
   assert.equal(JSON.stringify(st).includes('青木'), false);
   assert.equal(st.noOneList[0].askerId, undefined);
@@ -88,4 +90,18 @@ test('本人の画面には、自分あての質問と自分の記録だけ', as
   assert.equal(v.questions.length, 0);
   assert.ok(v.notes.every((n) => n.producerId === 'p5'));
   assert.equal(s.view('p4').questions.length, 1);
+});
+
+test('撮影用の最初の状態：青木さんのノートは 29 行。石灰の答えは川端さんの言葉として「畑全体」に入り 31 行になる', async () => {
+  const s = await fresh();
+  assert.equal(s.view('p6').notes.length, 29);
+  const q = await s.ask({ askerId: 'p6', text: '石灰はどのくらいの量をまけばいいですか？' });
+  const r = await s.talk({ producerId: 'p5', text: '石灰はな、うちは川口の畑で一反に一袋半。毎年それくらいやね。', questionId: q.id });
+  assert.ok(r.newLines.length > 0);
+  // ほかの人（山野さん）のオクラの話に引っぱられない
+  assert.ok(r.newLines.every((l) => l.crop === '畑全体'));
+  assert.equal(s.view('p6').notes.length, 29 + r.newLines.length);
+  // だれが整理したかを返す（キーが無いあいだは見本）
+  assert.deepEqual(r.by[0], { role: '整理', by: '見本（未接続）' });
+  assert.deepEqual(q.by[0], { role: '照合', by: '見本（未接続）' });
 });

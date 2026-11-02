@@ -14,3 +14,7 @@ node_modules/
 tmp/
 *.log
 .DS_Store
+
+# ほかの道具が作った作業用のもの（リポジトリに入れない）
+.codex/
+AGENTS.md

@@ -15,6 +15,7 @@
   </style>
 </head>
 <body>
+  <div id="bar" hidden style="text-align:center;padding:10px 0 0"><button class="btn ghost" id="swap" style="font-size:13px;padding:4px 12px">真ん中を大西さんにする</button></div>
   <div class="pair" id="pair"><p class="muted">デモの入口から開いてください。</p></div>
   <script>
     // 専用リンクの合言葉は # のあとに入れて渡す（サーバーの記録に残らないように）
@@ -22,10 +23,24 @@
     try { k = JSON.parse(decodeURIComponent(location.hash.slice(1)) || '{}'); } catch {}
     const q = (s) => encodeURIComponent(s || '');
     if (k.a && k.b) {
-      document.getElementById('pair').innerHTML = `
-        <div class="phone"><div class="label">新人：青木さん</div><iframe src="/tsugu?k=${q(k.a)}" title="青木さんの画面" allow="microphone"></iframe></div>
-        <div class="phone"><div class="label">本人：川端さん</div><iframe src="/honnin?k=${q(k.b)}" title="川端さんの画面" allow="microphone"></iframe></div>
-        ${k.c ? `<div class="phone"><div class="label">町の担当者</div><iframe src="/machi?k=${q(k.c)}" title="町の担当者の画面"></iframe></div>` : ''}`;
+      const phone = (label, path, key, title, mic) =>
+        `<div class="phone"><div class="label">${label}</div><iframe src="${path}?k=${q(key)}" title="${title}"${mic ? ' allow="microphone"' : ''}></iframe></div>`;
+      const mid = { b: phone('本人：川端さん', '/honnin', k.b, '川端さんの画面', true), d: k.d ? phone('本人：大西さん', '/honnin', k.d, '大西さんの画面', true) : '' };
+      document.getElementById('pair').innerHTML =
+        phone('新人：青木さん', '/tsugu', k.a, '青木さんの画面', true) +
+        `<div id="mid-b">${mid.b}</div><div id="mid-d" hidden>${mid.d}</div>` +
+        (k.c ? phone('町の担当者', '/machi', k.c, '町の担当者の画面', false) : '');
+      if (k.d) {
+        // 真ん中だけ入れ替える（左右の画面は読み込み直さない）
+        document.getElementById('bar').hidden = false;
+        const swap = document.getElementById('swap');
+        swap.addEventListener('click', () => {
+          const showD = document.getElementById('mid-d').hidden;
+          document.getElementById('mid-d').hidden = !showD;
+          document.getElementById('mid-b').hidden = showD;
+          swap.textContent = showD ? '真ん中を川端さんにもどす' : '真ん中を大西さんにする';
+        });
+      }
     }
   </script>
 </body>

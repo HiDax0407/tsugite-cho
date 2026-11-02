@@ -35,13 +35,15 @@
         <li>町の担当者の画面で、ノートで答えが出た数・聞ける人がいない作物を見る</li>
       </ol>
     </div>
-    <p><button class="btn ghost" id="reset">最初の状態に戻す（デモ用）</button> <span id="mode" class="small muted"></span></p>
+    <p><button class="btn ghost" id="reset">最初の状態に戻す（デモ用）</button>
+      <button class="btn ghost" id="shoot" hidden>撮影用：最初の状態にして3つを並べる</button></p>
     <p class="notice">Built with Claude: Japan 2026 応募作品。人名・地名・数字はすべて架空のデモデータです。農業のやり方の助言はしません。
     デモなので、この入口に全員の専用リンクを並べています。実際に使うときは、町が一人ひとりに専用リンク（QR カード）を配ります。</p>
   </main>
   <script type="module">
     import { esc } from '/common.js';
     const box = document.getElementById('links');
+    let bothUrl = '';
     const res = await fetch('/api/demo-links');
     if (!res.ok) {
       box.innerHTML = '<p class="muted">専用リンクは、町から配られたものを使ってください。</p>';
@@ -54,6 +56,8 @@
           <div class="small">${esc(p.title)}</div></a>`;
       const by = (role) => people.filter((p) => p.role === role);
       const ids = Object.fromEntries(people.map((p) => [p.id, p.key]));
+      bothUrl = `/both.html#${encodeURIComponent(JSON.stringify({ a: ids.p6, b: ids.p5, c: ids.town, d: ids.p4 }))}`;
+      document.getElementById('shoot').hidden = false;
       box.innerHTML = `
         ${by('newcomer').map((p) => card(p, '新しく農業を始めた人（主役）', true)).join('')}
         ${by('family').map((p) => card(p, '家を継ぐ人')).join('')}
@@ -61,17 +65,20 @@
         ${by('producer').map((p) => card(p, '本人')).join('')}
         <h2>町</h2>
         ${by('town').map((p) => card(p, '町の担当者（数だけを見る）')).join('')}
-        <a class="card" href="/both.html#${encodeURIComponent(JSON.stringify({ a: ids.p6, b: ids.p5, c: ids.town }))}" style="display:block;text-decoration:none;color:inherit">
+        <a class="card" href="${bothUrl}" style="display:block;text-decoration:none;color:inherit">
           <div style="font-size:18px;font-weight:700">3つを並べて見る（パソコン向け）→</div>
           <div class="small">青木さんの質問が川端さんの「話す」に届き、答えが返り、町の数が変わる様子が見えます</div></a>`;
     }
-    document.getElementById('reset').addEventListener('click', async () => {
-      if (!confirm('話した内容・質問を消して、最初の架空データに戻します。よろしいですか？')) return;
+    // 最初の架空データに戻す（青木さんのノート 29 行・石灰の答えなし・にんにくは「聞ける人がいない」）
+    async function reset() {
+      if (!confirm('話した内容・質問を消して、最初の架空データに戻します。よろしいですか？')) return false;
       const r = await fetch('/api/reset', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
-      if (!r.ok) return alert('戻せませんでした');
+      if (!r.ok) { alert('戻せませんでした'); return false; }
       try { localStorage.clear(); } catch {}
-      location.reload();
-    });
+      return true;
+    }
+    document.getElementById('reset').addEventListener('click', async () => { if (await reset()) location.reload(); });
+    document.getElementById('shoot').addEventListener('click', async () => { if (bothUrl && (await reset())) location.href = bothUrl; });
   </script>
 </body>
 </html>

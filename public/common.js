@@ -83,3 +83,27 @@ export function poll(fn, ms = 4000) {
     if (document.visibilityState === 'visible') fn();
   }, ms);
 }
+
+// 画面の右上に「いまの整理のしかた」を出す。AI が働いた直後だけ「役：だれが」を少しのあいだ出す
+//   例：「照合：Claude Opus 5.5」／キーが無いあいだは「照合：見本（未接続）」
+let modeDefault = '';
+let byNow = null;
+let byTimer = null;
+export function paintMode(def) {
+  if (def !== undefined) modeDefault = def;
+  const el = document.getElementById('mode');
+  if (!el) return;
+  const working = byNow && byNow.length;
+  // 役ごとに1行（途中で折り返さない）
+  el.innerHTML = working ? byNow.map((b) => `<span style="display:block;white-space:nowrap">${esc(b.role)}：${esc(b.by)}</span>`).join('') : esc(modeDefault);
+  el.classList.toggle('working', !!working);
+}
+export function setBy(list) {
+  byNow = (list || []).filter(Boolean);
+  clearTimeout(byTimer);
+  byTimer = setTimeout(() => {
+    byNow = null;
+    paintMode();
+  }, 20000);
+  paintMode();
+}

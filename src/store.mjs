@@ -48,13 +48,13 @@ export function createStore({
 
   async function addOrganized(talk, opts = {}) {
     const p = producerOf(talk.producerId);
-    const { lines, tasks } = await brain.organize(talk, { crops: p.crops, people, ownerName: p.label, startCrop: opts.startCrop || null });
+    const { lines, tasks, by } = await brain.organize(talk, { crops: p.crops, people, ownerName: p.label, startCrop: opts.startCrop || null }, { rulesOnly: !!opts.rulesOnly });
     const base = { talkId: talk.id, producerId: talk.producerId, date: talk.date };
     const newLines = lines.map((l) => ({ id: nextId('n'), ...l, ...base, answersQuestionId: opts.questionId || null }));
     const newTasks = tasks.map((t) => ({ id: nextId('k'), ...t, ...base, done: false, doneAt: null }));
     state.notes.push(...newLines);
     state.tasks.push(...newTasks);
-    return { newLines, newTasks };
+    return { newLines, newTasks, by };
   }
 
   async function reset() {
@@ -67,8 +67,10 @@ export function createStore({
     for (const t of all) {
       const talk = { ...t, speaker: t.producerId, source: 'prepared' };
       state.talks.push(talk);
-      await addOrganized(talk);
+      await addOrganized(talk, { rulesOnly: true }); // 撮影のたびに同じ「朝の状態」になるように
     }
+    // 前から聞いてあった質問（例：町に作る人がいない作物）。これも規則だけで
+    for (const q of reg.seed_questions || []) await ask({ askerId: q.askerId, text: q.text, date: q.date, rulesOnly: true });
     save();
   }
 
@@ -106,10 +108,11 @@ export function createStore({
     // 答えの作物：質問の作物（本人が作っていれば）→ 質問に近いノートの行の作物
     let startCrop = hintCrop && p.crops.includes(hintCrop) ? hintCrop : null; // 聞き返しへの答え
     if (q) {
-      const near = (q.relatedIds || []).map((id) => state.notes.find((n) => n.id === id)).find((n) => n && n.crop !== '畑全体' && p.crops.includes(n.crop));
+      // 近いノートは、答える本人が前に話した行だけを手がかりにする（ほかの人の畑の話に引っぱられない）
+      const near = (q.relatedIds || []).map((id) => state.notes.find((n) => n.id === id)).find((n) => n && n.producerId === producerId && n.crop !== '畑全体' && p.crops.includes(n.crop));
       startCrop = (q.crop && p.crops.includes(q.crop) ? q.crop : null) || near?.crop || null;
     }
-    const { newLines, newTasks } = await addOrganized(t, { questionId: q?.id, startCrop });
+    const { newLines, newTasks, by } = await addOrganized(t, { questionId: q?.id, startCrop });
     if (q) {
       q.status = '答えあり';
       q.answeredAt = t.date;
@@ -123,7 +126,7 @@ export function createStore({
     if (next && next.questionId) next.text = await brain.rephrase(qOf(next.questionId), {});
     save();
     const asker = q ? viewerOf(q.askerId) : null;
-    return { talk: t, newLines, newTasks, answeredQuestion: q || null, askerLabel: asker?.label || null, followup: next };
+    return { talk: t, newLines, newTasks, answeredQuestion: q || null, askerLabel: asker?.label || null, followup: next, by: [by, next?.by].filter(Boolean) };
   }
 
   // 見せる範囲を本人が決める（話ごと）
@@ -148,15 +151,15 @@ export function createStore({
   }
 
   // 継ぐ人・新人が聞く。見えるノートにあれば本人の言葉で、無ければいちばん近い本人1人に聞く
-  async function ask({ askerId = 'p2', text }) {
+  async function ask({ askerId = 'p2', text, date = null, rulesOnly = false }) {
     const v = viewerOf(askerId);
     if (!v) throw new Error('この人は登録されていません');
     const clean = String(text || '').trim();
     if (!clean) throw new Error('質問が空です');
-    const result = await brain.answer(clean, { notes: notesFor(v), producers, viewer: v, crops });
+    const result = await brain.answer(clean, { notes: notesFor(v), producers, viewer: v, crops }, { rulesOnly });
     const q = {
       id: nextId('q'),
-      date: today(),
+      date: date || today(),
       askerId,
       askerVoice: v.voiceLabel,
       text: clean,
@@ -168,6 +171,7 @@ export function createStore({
       missing: result.missing || null,
       toId: null,
       toReasons: [],
+      by: result.by ? [result.by] : [],
     };
     if (!result.answered) {
       const relatedProducerIds = [...new Set((result.related || []).map((l) => l.producerId))];

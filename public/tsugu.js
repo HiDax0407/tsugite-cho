@@ -2,6 +2,7 @@
 // 見えるのは、本人が見せてよいとした話だけ。1行ごとに、誰が・いつ話したかと元の言葉にたどれる。
 // 無いことは答えを作らず、いちばん近い本人1人に聞く。
 import { api, esc, when, makeListener, MIC_SVG, poll, KEY, noKey } from '/common.js';
+import { paintMode, setBy } from '/common.js';
 
 const main = document.getElementById('main');
 let st = null;
@@ -79,6 +80,8 @@ function renderNote() {
   const crops = [...cropsSeen.filter((c) => c !== '畑全体'), ...(cropsSeen.includes('畑全体') ? ['畑全体'] : [])];
   const whos = [...new Set(st.notes.map((n) => n.producerId))].sort((a, b) => rank({ producerId: a }) - rank({ producerId: b }));
   const asking = st.questions.filter((q) => q.status === '本人に聞く').length;
+  // 今日あたらしく入った行（朝とくらべて増えた分）
+  const today = st.notes.filter((n) => n.date === st.ctx.today && talkOf(n.talkId)?.source === 'app').length;
   const shown = cropFilter === '全部' ? crops : [cropFilter];
   const pick = (n) => whoFilter === '全員' || n.producerId === whoFilter;
   const groups = shown
@@ -99,7 +102,7 @@ function renderNote() {
     <p class="lead">${lead}</p>
     <div class="stat">
       <div><b>${whos.length}</b><span class="small">人の農家さん</span></div>
-      <div><b>${st.notes.length}</b><span class="small">行のノート</span></div>
+      <div><b>${st.notes.length}</b><span class="small">行のノート${today ? `<br><span class="badge" style="margin:2px 0 0">今日 +${today}</span>` : ''}</span></div>
       <div><b>${asking}</b><span class="small">本人に聞いている</span></div>
     </div>
     <div class="chips" style="margin-top:14px">${['全部', ...crops]
@@ -214,7 +217,7 @@ function render() {
   document.getElementById('who').textContent = `${me().label}の画面`;
   document.getElementById('whoTitle').textContent = me().title || '';
   document.title = `つぎて帳｜${me().label}`;
-  document.getElementById('mode').textContent = st.ctx.mode === 'claude' ? '整理：Claude' : '整理：見本（Claude 未接続）';
+  paintMode(st.ctx.mode === 'claude' ? '整理：Claude' : '整理：見本（Claude 未接続）');
   for (const b of document.querySelectorAll('.tabs button')) b.setAttribute('aria-selected', String(b.dataset.tab === tab));
   if (tab === 'note') renderNote();
   else renderAsk(); // 答えが来た質問は、ここで「見た」になる
@@ -265,6 +268,7 @@ main.addEventListener('click', async (e) => {
     const text = document.getElementById('q').value.trim();
     if (!text) return;
     lastResult = await api('/api/ask', { text });
+    setBy(lastResult.by);
     draft = '';
     await refresh();
   }

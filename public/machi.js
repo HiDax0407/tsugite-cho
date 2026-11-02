@@ -1,6 +1,7 @@
 // 町の担当者の画面「地域の引き継ぎ帳」：数だけを見る。
 // 言葉が見えるのは、本人が「町にも」とした話だけ。質問した人の名前は出さない。人を評価しない。
 import { api, esc, when, poll, KEY, noKey } from '/common.js';
+import { paintMode } from '/common.js';
 
 const main = document.getElementById('main');
 let st = null;
@@ -11,7 +12,7 @@ function render() {
   const s = st.stats;
   const q = s.questions;
   document.getElementById('whoTitle').textContent = `${st.ctx.town.name} ${st.ctx.town.section}`;
-  document.getElementById('mode').textContent = st.ctx.mode === 'claude' ? '整理：Claude' : '整理：見本（Claude 未接続）';
+  paintMode(st.ctx.mode === 'claude' ? '整理：Claude' : '整理：見本（Claude 未接続）');
   const town = st.notes
     .slice()
     .sort((a, b) => b.date.localeCompare(a.date))

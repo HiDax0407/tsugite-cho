@@ -129,3 +129,14 @@ test('1日の呼び出しの上限を超えたら、Claude を使わず見本の
   await brain.organize(talk, ctx); // 上限なので Claude は呼ばれない
   assert.equal(fake.calls.length, 40);
 });
+
+test('最初の状態に戻すときは Claude を呼ばない（撮影のたびに同じ行数）。動かしたときは役とモデルを返す', async () => {
+  const fake = fakeClient(() => ({ ids: [] }));
+  claude.useClientForTest(fake);
+  const s = createStore({ file: null });
+  await s.reset();
+  assert.equal(fake.calls.length, 0);
+  const q = await s.ask({ askerId: 'p6', text: 'かぼちゃはいつとればいいですか？' });
+  assert.equal(fake.calls.length, 1);
+  assert.deepEqual(q.by[0], { role: '照合', by: 'Claude Opus 5.5' });
+});
