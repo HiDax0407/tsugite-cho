@@ -28,7 +28,24 @@
 |---|---|
 | **手を煩わせず、すぐ答えを得る** | 本人は話すだけ。新人は一言聞くだけ。町は何も入力しなくても数が見える。**一度答えたことは、二度聞かれない**（本人の手間も減る） |
 | **閉じた世界を開く** | いまは家の中でしか伝わらない言葉を、**本人が許した話だけ**、地域の新人にも届ける。誰のノートにも無ければ、その作物を作っている近くの農家さん**1人だけ**に質問が届く（質問が家の外へ流れる） |
-| **地域の生産を残す** | ①離農しても技術の記録が残り、受け手の決まっていない農地を次の人が作りやすくなる ②新人が早く一人立ちして、地域に残りやすくなる ③町の支援が、問い合わせへの対応から「聞ける人がいない作物」など効くところへ回る。**金額の見込みは、一次資料で裏が取れるまで書きません** |
+| **地域の生産を残す** | ①離農しても技術の記録が残り、受け手の決まっていない農地を次の人が作りやすくなる ②新人が早く一人立ちして、地域に残りやすくなる ③町の支援が、問い合わせへの対応から「聞ける人がいない作物」など効くところへ回る。裏づけの数字は下の表（金額の見込みは自分で計算しない） |
+
+### 「地域の生産を残す」の裏づけ（公表資料）
+
+| | 数 | 出どころ |
+|---|---|---|
+| 農業が生み出す付加価値（農業総生産・GDP に入る額） | **4兆9,705億円**、GDP の **0.8%**（令和6年） | 農林水産省「[農林水産業ひと口メモ 1 農林水産関係主要指標](https://www.maff.go.jp/j/kanbo/hitokuchi_memo/attach/pdf/index-138.pdf)」p.3（内閣府「国民経済計算」より） |
+| 基幹的農業従事者の見込み | 今後20年で **約4分の1**（116万人→30万人）に減る見込み | 農林水産省「[スマート農業技術活用促進法 参考資料（詳細）](https://www.maff.go.jp/j/kanbo/kihyo03/gityo/kihon_sisin/attach/pdf/sisin1-3-1-2.pdf)」（令和6年6月）。推計の方法は資料に書かれていない |
+| 「10年後も耕す人」が決まっている農地のうち、一定年齢以上の農業者の農地 | **約56万ha**（13.2%）。将来使われないリスクのある農地として示されている（一定年齢は「75歳程度までで設定されている地区が多い」） | 農林水産省「[地域計画の分析・検証について](https://www.maff.go.jp/j/keiei/koukai/attach/pdf/chiiki_keikaku-189.pdf)」（令和7年12月・令和7年4月末のデータ） |
+| 就農時に「営農技術の習得」に苦労した新規参入者 | **56.0%**（3つまで選ぶ。「農地の確保」72.7%、「資金の確保」70.7%に次ぐ） | 全国農業会議所・全国新規就農相談センター「[新規就農者の就農実態に関する調査結果－令和６年度－](https://www.be-farmer.jp/uploads/statistics/r6_zittai.pdf)」（2025年3月）p.23。農林水産省「[新規就農者の育成・確保について](https://www.maff.go.jp/j/new_farmer/pdf/shinkishuno.pdf)」でも引用 |
+| 経営面の課題に「技術の未熟さ」を挙げる新規参入者 | 就農1・2年目 **40.1%** → 3・4年目 31.7% → 5年目以上 26.1% | 同調査 p.50 表36 |
+| 農業所得で生計が成り立っている新規参入者 | 就農1・2年目 **23.1%** → 3・4年目 39.3% → 5年目以上 51.5% | 同調査 p.42 図9 |
+
+- 新規就農の調査は、就農後おおむね10年以内の人が対象で、資金の受給者が中心（回収率は約20%）。新規就農者全体を代表する数字ではありません
+- 「技術の未熟さ」と「生計」はどちらも就農年数ごとの割合で、技術が身につけば生計が成り立つ、という因果を示す数字ではありません。並べて見せているだけです
+- 金額・面積・人数を掛け合わせて「○兆円が失われる」といった見込みは作っていません
+
+つぎて帳がねらうのは、この「一人立ちまでの数年」を、地域の農家さんの言葉で短くすることと、高齢の農家さんが耕している農地の段取りを、次の人が受け取れる形で残すことです。
 
 ### 「最適な答え」をどう決めるか
 
@@ -165,4 +182,4 @@ MIT
 - **The town office sees numbers only**: notes by crop and district, questions answered from the notebook, questions with no one to ask. No names of askers, no evaluation of people.
 - No farming advice. Identity is decided on the server from the personal link, not from anything the page sends.
 
-Context (Japan, official MAFF data): 1.036 million core farm workers, down 24.0% in five years, 69.6% aged 65+ (2025 Census); 58.8% of farms with a manager aged 65+ have no successor secured; 14,410 new farmers aged 49 or under (2025, down 8.3%). All names, places and numbers inside the app are fictional. All code was written during the hackathon (from 2026-11-02 12:30 JST). Runs with `npm start` (Node.js only, no dependencies, works without an API key using a rule-based fallback).
+Context (Japan, official data): 1.036 million core farm workers, down 24.0% in five years, 69.6% aged 65+ (2025 Census), expected to fall to about a quarter (1.16M → 0.30M) in 20 years (MAFF); agriculture's value added is ¥4.97 trillion, 0.8% of GDP (2024); 58.8% of farms with a manager aged 65+ have no successor secured; 56.0% of new entrants say learning farming skills was a main difficulty, and only 23.1% make a living from farming in their first two years (National Chamber of Agriculture survey, 2025). All names, places and numbers inside the app are fictional. All code was written during the hackathon (from 2026-11-02 12:30 JST). Runs with `npm start` (Node.js only, no dependencies, works without an API key using a rule-based fallback).
