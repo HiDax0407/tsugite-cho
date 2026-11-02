@@ -70,15 +70,18 @@
           <div class="small">青木さんの質問が川端さんの「話す」に届き、答えが返り、町の数が変わる様子が見えます</div></a>`;
     }
     // 最初の架空データに戻す（青木さんのノート 29 行・石灰の答えなし・にんにくは「聞ける人がいない」）
-    async function reset() {
-      if (!confirm('話した内容・質問を消して、最初の架空データに戻します。よろしいですか？')) return false;
+    async function reset(ask = true) {
+      if (ask && !confirm('話した内容・質問を消して、最初の架空データに戻します。よろしいですか？')) return false;
       const r = await fetch('/api/reset', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
       if (!r.ok) { alert('戻せませんでした'); return false; }
       try { localStorage.clear(); } catch {}
       return true;
     }
+    // 撮影用は確認なしで戻る（ダイアログが動画に映らないように）。入口を /?shoot=1 で開いても同じ
+    const shoot = async () => { if (bothUrl && (await reset(false))) location.href = bothUrl; };
     document.getElementById('reset').addEventListener('click', async () => { if (await reset()) location.reload(); });
-    document.getElementById('shoot').addEventListener('click', async () => { if (bothUrl && (await reset())) location.href = bothUrl; });
+    document.getElementById('shoot').addEventListener('click', shoot);
+    if (new URLSearchParams(location.search).get('shoot') === '1') shoot();
   </script>
 </body>
 </html>

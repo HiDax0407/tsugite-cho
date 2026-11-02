@@ -161,6 +161,12 @@ function resultHtml(q) {
       AI が答えを作ることはしません。「聞ける人がいない質問」として、町の担当者に<b>数だけ</b>知らせます（あなたの名前は出ません）。</p>${near}</div>`;
   }
   const to = prod(q.toId);
+  if (q.status === '答えあり') {
+    // 聞いていた本人が話して答えた。カードはそのまま「答えが来た」に変わる
+    return `<div class="card accent"><b>${esc(to.label)}から答えが来ました。</b>${quotesHtml(q.answerNoteIds || [])}
+      <p class="small muted" style="margin:8px 0 0">ノートに入りました。次に同じことを聞く人には、ノートから答えが出ます（${esc(to.label)}の手は止まりません）。
+      <button class="linkish" data-act="reask" data-text="${esc(q.text)}">もう一度聞いてみる</button></p></div>`;
+  }
   return `<div class="card accent"><b>まだだれのノートにもありません。${esc(to.label)}に聞きます。</b>
     <p class="small" style="margin:6px 0 0">${esc(to.label)}を選んだわけ：${esc((q.toReasons || []).join('・'))}。${esc(to.label)}が次に話すとき、この質問を聞きます。ほかの人には届きません。</p>${near}</div>`;
 }
@@ -172,8 +178,11 @@ function renderAsk() {
   const inNote = st.questions.filter((q) => q.status === 'ノートにあった').reverse();
   const s = seen();
   const samples = demo?.sample_questions_by?.[me().id] || demo?.sample_questions || [];
+  // いま聞いた質問の答えは入力欄の上に出す（小さい画面でも切れない）。本人が答えたら、同じ場所で「答えが来た」に変わる
+  const current = lastResult ? qOf(lastResult.id) || lastResult : null;
   main.innerHTML = `<h1>質問する</h1>
     <p class="lead">ノートにあれば、話した人の言葉で答えます。無ければ答えを作らず、いちばん近い農家さん1人に聞きます。</p>
+    ${current ? resultHtml(current) : ''}
     <div class="card">
       <textarea id="q" rows="2" placeholder="例：かぼちゃはいつとればいいですか？">${esc(draft)}</textarea>
       <div class="row" style="margin-top:8px">
@@ -184,7 +193,6 @@ function renderAsk() {
         .map((t) => `<button class="chip" data-act="sampleq" data-text="${esc(t)}">${esc(t)}</button>`)
         .join('')}</div>
     </div>
-    ${lastResult ? resultHtml(lastResult) : ''}
     ${
       answered.length
         ? `<h2>農家さんから答えが来た</h2>${answered
@@ -252,6 +260,7 @@ main.addEventListener('click', async (e) => {
     whoFilter = '全員';
     focusNote = b.dataset.id;
     openSrc.add(b.dataset.id);
+    lastResult = null; // ノートで見たら、質問の画面は次の質問を聞ける形に戻す
     render();
   } else if (act === 'sampleq') {
     draft = b.dataset.text;
@@ -265,14 +274,20 @@ main.addEventListener('click', async (e) => {
       listener.start();
     }
   } else if (act === 'ask') {
-    const text = document.getElementById('q').value.trim();
-    if (!text) return;
-    lastResult = await api('/api/ask', { text });
-    setBy(lastResult.by);
-    draft = '';
-    await refresh();
+    await ask(document.getElementById('q').value.trim());
+  } else if (act === 'reask') {
+    await ask(b.dataset.text); // 答えが来た質問を、もう一度（今度はノートから出る）
   }
 });
+
+async function ask(text) {
+  if (!text) return;
+  lastResult = await api('/api/ask', { text });
+  setBy(lastResult.by);
+  draft = '';
+  await refresh();
+  window.scrollTo(0, 0); // 答えは上に出る
+}
 
 main.addEventListener('input', (e) => {
   if (e.target.id === 'q') draft = e.target.value;

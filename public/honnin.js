@@ -97,14 +97,18 @@ function renderTalk() {
   }
 
   const sample = q ? demoAnswers()[q.text] : gapQuestion ? demoAnswers()[gapQuestion.text] : demoFrees()[0];
+  // デモ用の見本は、押して話すボタンのすぐ下（質問が届いていても画面の中に収まる）
+  const demoLink =
+    sample && (phase === 'idle' || phase === 'listening')
+      ? `<p class="small muted" style="text-align:center;margin:0 0 10px">デモ用：<button class="linkish" data-act="sample">見本の話を入れる（声の代わり）</button></p>`
+      : '';
   const typed = phase === 'saved' ? '' : `
     <details class="card"><summary>文字で入れる</summary>
       <textarea id="typed" rows="3" style="margin-top:10px" placeholder="ここに書いても残せます"></textarea>
       <button class="btn primary wide" data-act="save-typed" style="margin-top:8px">残す</button>
-    </details>
-    ${sample ? `<p class="small muted">デモ用：<button class="linkish" data-act="sample">見本の話を入れる（声の代わり）</button></p>` : ''}`;
+    </details>`;
 
-  main.innerHTML = top + middle + typed;
+  main.innerHTML = top + middle + demoLink + typed;
 }
 
 function renderTasks() {
@@ -191,6 +195,7 @@ async function save(text) {
   heard = '';
   phase = 'saved';
   await refresh();
+  window.scrollTo(0, 0); // 返事と、右上の「だれが整理したか」が見える位置に
   speak(reply.voice);
 }
 
@@ -220,6 +225,7 @@ main.addEventListener('click', async (e) => {
     heard = (q ? demoAnswers()[q.text] : gapQuestion ? demoAnswers()[gapQuestion.text] : demoFrees()[0]) || '';
     phase = heard ? 'heard' : 'idle';
     render();
+    window.scrollTo(0, 0);
   } else if (act === 'hear-q' && q) speak(questionVoice(q));
   else if (act === 'hear-gap' && gapQuestion) speak(gapQuestion.text);
   else if (act === 'hear-reply' && reply) speak(reply.voice);
