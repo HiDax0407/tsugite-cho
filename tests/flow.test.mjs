@@ -96,3 +96,12 @@ test('聞き返しへの答えは、聞き返した文の作物から始まる�
   const r3 = await s.talk({ producerId: 'p4', text: '葉が黄色うなったら。', hintCrop: 'ピーマン' }); // 作っていない作物は使わない
   assert.equal(r3.newLines[0].crop, '畑全体');
 });
+
+test('聞き返しに答えた直後は、続けて抜けを聞かない（「〜んとこ」は作業にしない）', async () => {
+  const s = await fresh();
+  const r1 = await s.talk({ producerId: 'p4', text: '里芋はええ頃になったら掘る。' });
+  const r2 = await s.talk({ producerId: 'p4', text: '葉が半分くらい黄色うなって、倒れてきたら掘り時。', hintCrop: r1.followup.crop });
+  assert.equal(r2.followup, null);
+  const dry = s.view('p4').tasks.find((t) => t.quote.includes('日の当たらんとこ'));
+  assert.ok(!dry || dry.type === '条件'); // 「〜んとこ」を「〜せんといかん」と取り違えない（掘ったら、の条件の作業ならよい）
+});

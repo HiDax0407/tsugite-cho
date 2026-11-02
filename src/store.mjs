@@ -116,7 +116,10 @@ export function createStore({
       q.answerTalkId = t.id;
       q.answerNoteIds = newLines.map((l) => l.id);
     }
-    const next = await brain.followup({ askList: askListFor(producerId), newTasks, newLines, successorName: '' });
+    // 聞き返しに答えた直後は、続けて抜けを聞かない（届いている質問だけ聞く）。本人を追い立てない
+    const answeringGap = !!hintCrop && !q;
+    const pending = askListFor(producerId);
+    const next = answeringGap && pending.length === 0 ? null : await brain.followup({ askList: pending, newTasks, newLines, successorName: '' });
     if (next && next.questionId) next.text = await brain.rephrase(qOf(next.questionId), {});
     save();
     const asker = q ? viewerOf(q.askerId) : null;

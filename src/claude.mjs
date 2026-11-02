@@ -227,14 +227,15 @@ export async function followup({ newTasks, newLines }) {
     type: 'object',
     properties: {
       ask: { type: 'boolean', description: '聞き返す抜けがあるか' },
-      type: { type: 'string', enum: ['時期', '量', '理由'] },
+      type: { type: 'string', enum: ['見るところ', '時期', '量', '理由'] },
       lineIndex: { type: 'integer', description: 'どの文についての聞き返しか' },
       question: { type: 'string', description: '本人に読み上げる短い質問（40字くらいまで）' },
     },
     required: ['ask', 'type', 'lineIndex', 'question'],
     additionalProperties: false,
   };
-  const user = `農家さんがいま話した文です。次の人に引き継ぐとき、いちばん困りそうな抜け（いつ・どのくらい・なぜ）を1つだけ選び、本人にやさしく短く聞き返してください。
+  const user = `農家さんがいま話した文です。次の人に引き継ぐとき、いちばん困りそうな抜けを1つだけ選び、本人にやさしく短く聞き返してください。
+いちばん大事なのは「ええ頃」「様子を見て」のような、あいまいな判断の決め方（どこを見て決めるか＝見るところ）。次に、いつ・どのくらい・なぜ。
 本人の言い方に合わせ、むずかしい言葉は使わない。助言や正解は言わない。抜けが無ければ ask を false に。
 
 ${newLines.map((l, i) => `${i}：${l.quote}`).join('\n')}
