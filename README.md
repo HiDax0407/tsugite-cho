@@ -1,4 +1,7 @@
-# つぎて帳（Tsugite-cho）
+# <img src="public/img/icon-180.png" alt="" width="40" height="40" align="top" /> つぎて帳（Tsugite-cho）
+
+![秋の畑で、年配の農家さんが新しく農業を始めた人にスマートフォンを向けて話している絵](public/img/hero.jpg)
+<sub>絵とアイコンは AI（画像生成）で作った架空の場面・図案です。実在の人・場所ではありません。</sub>
 
 > Built with Claude: Japan 2026 応募作品 ／ テーマ1「あなたにしかない深さ」
 > **アプリの中の人名・地名・数字はすべて架空です。**（下の「どれだけの課題か」の数字だけは国の公表資料）
@@ -148,7 +151,7 @@ npm start             # http://localhost:8793
 |---|---|---|
 | 事前に用意 | `data/prepared/tsugite_producer.json` | 2026-11-02 朝（キックオフ前）に作者が作った**架空の**テキストデータ（山野さんの聞き取り）。手を加えずに置いている |
 | 事前に用意 | 設計メモ | リポジトリの外に置いている（構想・計画） |
-| 期間中に作成 | 上記以外のすべて（コード・画面・`data/region_demo.json`〔架空の町・農家さん・研修生〕・`data/demo_answers.json`〔架空の見本の話〕・テスト・フック・`CLAUDE.md`） | 作業の記録は [DEVLOG.md](DEVLOG.md) とコミット履歴 |
+| 期間中に作成 | 上記以外のすべて（コード・画面・`data/region_demo.json`〔架空の町・農家さん・研修生〕・`data/demo_answers.json`〔架空の見本の話〕・`public/img/`〔AI の画像生成で作った架空の場面の絵とアイコン〕・テスト・フック・`CLAUDE.md`） | 作業の記録は [DEVLOG.md](DEVLOG.md) とコミット履歴 |
 
 使っているもの：Node.js 標準機能と Anthropic 公式 SDK（`@anthropic-ai/sdk`。キーを入れたときだけ使う）。
 
