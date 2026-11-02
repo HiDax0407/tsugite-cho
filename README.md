@@ -118,7 +118,7 @@ AI が「いちばんよいやり方」を判断することは**しません**�
 
 ## 試し方
 
-Node.js 20 以上が必要です。外部のライブラリは使っていません。**API キーが無くても動きます**（下の「見本の整理」）。
+Node.js 20 以上が必要です。使っている外部のライブラリは Anthropic 公式 SDK だけで、キーを入れたときだけ読み込みます。**API キーが無くても動きます**（下の「見本の整理」）。
 
 ```bash
 git clone https://github.com/HiDax0407/tsugite-cho.git
@@ -148,17 +148,28 @@ npm start             # http://localhost:8793
 | 事前に用意 | 設計メモ | リポジトリの外に置いている（構想・計画） |
 | 期間中に作成 | 上記以外のすべて（コード・画面・`data/region_demo.json`〔架空の町・農家さん・研修生〕・`data/demo_answers.json`〔架空の見本の話〕・テスト・フック・`CLAUDE.md`） | 作業の記録は [DEVLOG.md](DEVLOG.md) とコミット履歴 |
 
-使っているもの：Node.js 標準機能のみ。
+使っているもの：Node.js 標準機能と Anthropic 公式 SDK（`@anthropic-ai/sdk`。キーを入れたときだけ使う）。
 
 ## Claude の使い方
 
-**アプリの中（予定・ハッカソンのクレジットで専用キーと使用上限を設定してからつなぐ）**
+**アプリの中**：つなぎ口（`src/claude.mjs`・Anthropic 公式 SDK）はできています。ハッカソンのクレジットが届いたら、専用キーと使用上限を設定してからつなぎます。キーが無いあいだ・失敗したとき・上限に達したときは、同じ流れのまま「見本の整理」（決まった規則）で動きます。
 
 | 役 | すること | モデル |
 |---|---|---|
-| 聞き手 | 話の抜け（いつ・どのくらい・なぜ）に気づき、1つだけ聞き返す。継ぐ人・新人の質問を本人に伝わる言葉に言い換える | 速い返事のため軽いモデル |
-| まとめ役 | 話し言葉（方言・言い直し込み）→ 作業カードとノートの項目（構造化出力）。言っていないことは足さない。各項目は元の文にたどれる | 上位モデル |
-| 照合役 | 質問が、見てよいノートで答えられるかを本人ごとに判断し、答えられる行の番号だけを返す（文を作らない）。足りなければ「何がまだ聞けていないか」を返す | 上位モデル |
+| まとめ役 | 話を文に切るのは手元の規則（本人の言葉そのまま）。Claude は文ごとに「どの作物か・様子かコツか・印・これからの作業か・期限の言葉」を付ける（決まった形の JSON） | `claude-opus-5-5` |
+| 照合役 | 質問に、**見てよいノートの行の番号だけ**で答える。文は作らない。無ければ「まだ誰も話していないこと」を返す | `claude-opus-5-5` |
+| 聞き手 | 話の抜け（いつ・どのくらい・なぜ）を1つだけ、短い質問で聞き返す。新人の質問を、高齢の本人に伝わる言い方に直す | `claude-haiku-5-5`（速い返事のため） |
+
+**Claude の答えを信じきらない（プログラムで確かめる）**
+
+- 画面に出る言葉は、必ず本人が話した文そのものから取る。Claude が返した作物・印・期限の言葉は、名簿や話の中に無ければ捨てる
+- 照合役が返した番号のうち、その人が見てよい行の番号だけを使う。家族だけの話は、Claude にも送らない
+- 聞き返しは「質問の形・短い・助言の言い回しを含まない」ものだけ。言い換えで中身（作物などの言葉）が変わったら、元の質問をそのまま伝える
+- 断られた（`refusal`）・途中で切れた・形が違うときは、見本の規則で続ける。上位モデルは、断られたときにサーバー側で別のモデルが引き継ぐ設定（`fallbacks: "default"`）にしている
+- 1日に呼ぶ回数の上限（`CLAUDE_MAX_CALLS_PER_DAY`、空なら200回）。超えたら見本の規則で動く
+- これらはテスト（`tests/claude.test.mjs`）で、偽物の Claude を使って確かめている（本物の API は呼ばない）
+
+**つなぐときの手順**：`npm install` → Claude Console でハッカソン専用のキーを作り、使用上限を設定 → `.env` に `ANTHROPIC_API_KEY=` を書く（`.env` はリポジトリに入らない）→ `npm start`。画面の右上が「整理：Claude」になります。
 
 並べる順番（近い人から）と、質問を届ける相手を決めるのは、AI ではなく決まった規則です（理由を画面に出せるように）。
 
@@ -182,4 +193,4 @@ MIT
 - **The town office sees numbers only**: notes by crop and district, questions answered from the notebook, questions with no one to ask. No names of askers, no evaluation of people.
 - No farming advice. Identity is decided on the server from the personal link, not from anything the page sends.
 
-Context (Japan, official data): 1.036 million core farm workers, down 24.0% in five years, 69.6% aged 65+ (2025 Census), expected to fall to about a quarter (1.16M → 0.30M) in 20 years (MAFF); agriculture's value added is ¥4.97 trillion, 0.8% of GDP (2024); 58.8% of farms with a manager aged 65+ have no successor secured; 56.0% of new entrants say learning farming skills was a main difficulty, and only 23.1% make a living from farming in their first two years (National Chamber of Agriculture survey, 2025). All names, places and numbers inside the app are fictional. All code was written during the hackathon (from 2026-11-02 12:30 JST). Runs with `npm start` (Node.js only, no dependencies, works without an API key using a rule-based fallback).
+Context (Japan, official data): 1.036 million core farm workers, down 24.0% in five years, 69.6% aged 65+ (2025 Census), expected to fall to about a quarter (1.16M → 0.30M) in 20 years (MAFF); agriculture's value added is ¥4.97 trillion, 0.8% of GDP (2024); 58.8% of farms with a manager aged 65+ have no successor secured; 56.0% of new entrants say learning farming skills was a main difficulty, and only 23.1% make a living from farming in their first two years (National Chamber of Agriculture survey, 2025). All names, places and numbers inside the app are fictional. All code was written during the hackathon (from 2026-11-02 12:30 JST). Runs with `npm start` (Node.js; the only dependency is the official Anthropic SDK, loaded only when an API key is set; works without a key using a rule-based fallback). Claude only labels and selects (sentence labels, note line IDs, one short follow-up question); the code checks every result against the farmer's own sentences and what the viewer may see, and falls back to the rules on refusal, malformed output, or the daily call cap.
