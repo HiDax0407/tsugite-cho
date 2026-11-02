@@ -25,9 +25,10 @@ test('見せる範囲：「家族だけ」の話は、家族にしか見えな�
 test('本人が見せる範囲を広げると、新人にも見える', async () => {
   const s = await fresh();
   assert.ok(!talkIdsOf(s.view('p6')).has('t3'));
-  s.setShare({ talkId: 't3', share: 'region' });
+  s.setShare({ producerId: 'p1', talkId: 't3', share: 'region' });
   assert.ok(talkIdsOf(s.view('p6')).has('t3'));
-  assert.throws(() => s.setShare({ talkId: 't3', share: 'everyone' }));
+  assert.throws(() => s.setShare({ producerId: 'p1', talkId: 't3', share: 'everyone' }));
+  assert.throws(() => s.setShare({ producerId: 'p4', talkId: 't3', share: 'town' })); // ほかの本人の話は変えられない
 });
 
 test('新人の質問：答えのある人が何人いれば、近い人の言葉から順に、出どころつきで', async () => {
@@ -76,7 +77,7 @@ test('新人の質問への答えは、聞いた人には届く。ほかの人�
   assert.ok(!talkIdsOf(s.view('p2')).has(r.talk.id)); // 健太さんにはまだ見えない
   const again = await s.ask({ askerId: 'p6', text: '石灰はどのくらいまけばいい？' });
   assert.equal(again.status, 'ノートにあった'); // 二度は聞かない
-  s.setShare({ talkId: r.talk.id, share: 'region' });
+  s.setShare({ producerId: 'p5', talkId: r.talk.id, share: 'region' });
   assert.ok(talkIdsOf(s.view('p2')).has(r.talk.id));
 });
 

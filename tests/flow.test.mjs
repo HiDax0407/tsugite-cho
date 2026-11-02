@@ -58,7 +58,7 @@ test('「今はわからん」でリストの最後に回る', async () => {
   const s = await fresh();
   const a = await s.ask({ askerId: 'p2', text: 'かぼちゃを日陰で寝かせるのは、どこに置けばいいですか？' });
   await s.ask({ askerId: 'p2', text: '掘る機械の刃の深さは、何を見て決めているんですか？' });
-  s.later(a.id);
+  s.later({ producerId: 'p1', questionId: a.id });
   assert.notEqual(s.askListFor('p1')[0].id, a.id);
   assert.equal(s.askListFor('p1')[1].id, a.id);
 });
@@ -66,7 +66,7 @@ test('「今はわからん」でリストの最後に回る', async () => {
 test('作業カードは「済み」を押すだけ', async () => {
   const s = await fresh();
   const t = s.view('p1').tasks[0];
-  s.setDone(t.id, true);
+  s.setDone({ producerId: 'p1', taskId: t.id, done: true });
   assert.equal(s.view('p1').tasks[0].done, true);
 });
 
@@ -76,4 +76,12 @@ test('空の話・空の質問・知らない人は受け付けない', async ()
   await assert.rejects(() => s.ask({ askerId: 'p2', text: '' }));
   await assert.rejects(() => s.ask({ askerId: 'x9', text: 'かぼちゃはいつ？' }));
   assert.throws(() => s.view('x9'));
+});
+
+test('ほかの本人あての質問・ほかの本人の作業は動かせない', async () => {
+  const s = await fresh();
+  const q = await s.ask({ askerId: 'p6', text: '里芋の種芋は、どこにしまっておけばいいですか？' }); // 大西さんあて
+  assert.throws(() => s.later({ producerId: 'p1', questionId: q.id }));
+  const t = s.view('p1').tasks[0];
+  assert.throws(() => s.setDone({ producerId: 'p5', taskId: t.id, done: true }));
 });

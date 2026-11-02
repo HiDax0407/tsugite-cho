@@ -6,6 +6,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { extname, join, normalize, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createStore } from './src/store.mjs';
+import { createKeys } from './src/keys.mjs';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const PUBLIC = join(ROOT, 'public');
@@ -23,6 +24,10 @@ const HOST = process.env.HOST || '127.0.0.1';
 
 const store = createStore();
 await store.load();
+// 一人ひとりの専用リンクの合言葉（data/runtime/keys.json・リポジトリに入れない）
+const keys = createKeys({ file: join(ROOT, 'data', 'runtime', 'keys.json'), ids: store.people().map((p) => p.id) });
+// デモの入口に全員の専用リンクを並べるか（架空データで試すため。本番で町が配るときは 0 にする）
+const DEMO_LINKS = process.env.DEMO_LINKS !== '0';
 const demo = JSON.parse(readFileSync(join(ROOT, 'data', 'demo_answers.json'), 'utf8'));
 
 const TYPES = {
@@ -53,16 +58,30 @@ async function readJson(req) {
   return chunks.length ? JSON.parse(Buffer.concat(chunks).toString('utf8')) : {};
 }
 
+// 誰として動くかは、専用リンクの合言葉（X-Tsugite-Key）からだけ決める。画面や要求の中身では名乗らせない
+function need(who, kind) {
+  if (!who) throw Object.assign(new Error('専用リンクから開いてください'), { status: 401 });
+  if (kind === 'producer' && !store.isProducer(who)) throw Object.assign(new Error('本人の画面からだけ使えます'), { status: 403 });
+  if (kind === 'viewer' && !store.isViewer(who)) throw Object.assign(new Error('継ぐ人・新人の画面からだけ使えます'), { status: 403 });
+  return who;
+}
+
 const routes = {
-  // 見る人ごとに、見てよいものだけ返す（as：本人・継ぐ人・新人の id、または town）
-  'GET /api/state': (_, url) => store.view(url.searchParams.get('as') || 'p2'),
+  // 見る人ごとに、見てよいものだけ返す
+  'GET /api/state': (_, who) => store.view(need(who)),
   'GET /api/demo': () => demo,
-  'POST /api/talk': async (body) => store.talk({ producerId: body.producerId || 'p1', text: body.text, questionId: body.questionId || null }),
-  'POST /api/ask': async (body) => store.ask({ askerId: body.askerId || 'p2', text: body.text }),
-  'POST /api/share': async (body) => store.setShare({ talkId: body.talkId, share: body.share }),
-  'POST /api/later': async (body) => store.later(body.questionId),
-  'POST /api/done': async (body) => store.setDone(body.taskId, body.done),
+  // デモの入口用：全員の専用リンク（DEMO_LINKS=0 のときは出さない）
+  'GET /api/demo-links': () => {
+    if (!DEMO_LINKS) throw Object.assign(new Error('ありません'), { status: 404 });
+    return store.people().map((p) => ({ ...p, key: keys.tokenOf(p.id) }));
+  },
+  'POST /api/talk': async (body, who) => store.talk({ producerId: need(who, 'producer'), text: body.text, questionId: body.questionId || null }),
+  'POST /api/ask': async (body, who) => store.ask({ askerId: need(who, 'viewer'), text: body.text }),
+  'POST /api/share': async (body, who) => store.setShare({ producerId: need(who, 'producer'), talkId: body.talkId, share: body.share }),
+  'POST /api/later': async (body, who) => store.later({ producerId: need(who, 'producer'), questionId: body.questionId }),
+  'POST /api/done': async (body, who) => store.setDone({ producerId: need(who, 'producer'), taskId: body.taskId, done: body.done }),
   'POST /api/reset': async () => {
+    if (!DEMO_LINKS) throw Object.assign(new Error('ありません'), { status: 404 });
     await store.reset();
     return { ok: true };
   },
@@ -96,7 +115,8 @@ const server = createServer(async (req, res) => {
     if (routes[key]) {
       if (req.method === 'POST' && !sameOrigin(req)) return send(res, 403, { error: 'この画面からだけ使えます' });
       const body = req.method === 'POST' ? await readJson(req) : null;
-      return send(res, 200, await routes[key](body, url));
+      const who = keys.whoIs(String(req.headers['x-tsugite-key'] || ''));
+      return send(res, 200, await routes[key](body, who));
     }
     if (req.method !== 'GET') return send(res, 404, { error: 'ありません' });
     const rel = PAGES[url.pathname] || normalize(decodeURIComponent(url.pathname)).replace(/^([/\\])+/, '');
@@ -106,7 +126,7 @@ const server = createServer(async (req, res) => {
     return send(res, 200, data, TYPES[extname(file)] || 'application/octet-stream');
   } catch (e) {
     if (e.code === 'ENOENT' || e.code === 'EISDIR') return send(res, 404, 'ページがありません', 'text/plain; charset=utf-8');
-    return send(res, 400, { error: e.message });
+    return send(res, e.status || 400, { error: e.message });
   }
 });
 

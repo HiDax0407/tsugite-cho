@@ -1,9 +1,22 @@
-// 2つの画面で使う小さな道具（サーバーとのやりとり・声・日付）
+// 画面で使う小さな道具（サーバーとのやりとり・声・日付）
+
+// 専用リンク（…?k=合言葉）で開く。誰として動くかはサーバーが合言葉から決める
+export const KEY = new URLSearchParams(location.search).get('k') || '';
+
 export async function api(path, body) {
-  const res = await fetch(path, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {});
+  const headers = { 'X-Tsugite-Key': KEY };
+  if (body) headers['Content-Type'] = 'application/json';
+  const res = await fetch(path, body ? { method: 'POST', headers, body: JSON.stringify(body) } : { headers });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'うまくいきませんでした');
+  if (!res.ok) throw Object.assign(new Error(data.error || 'うまくいきませんでした'), { status: res.status });
   return data;
+}
+
+// 専用リンクで開いていないときの案内
+export function noKey(main) {
+  main.innerHTML = `<h1>専用リンクから開いてください</h1>
+    <p class="lead">つぎて帳は、一人ひとりに配られた専用リンク（QR カードなど）で開きます。ログインはいりません。</p>
+    <p><a class="btn primary" href="/">デモの入口へ</a></p>`;
 }
 
 export function esc(s) {

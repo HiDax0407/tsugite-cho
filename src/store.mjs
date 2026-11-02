@@ -124,18 +124,18 @@ export function createStore({
   }
 
   // 見せる範囲を本人が決める（話ごと）
-  function setShare({ talkId, share }) {
+  function setShare({ producerId, talkId, share }) {
     if (!SHARE_KEYS.includes(share)) throw new Error('見せる範囲が正しくありません');
     const t = talkOf(talkId);
-    if (!t) throw new Error('話が見つかりません');
+    if (!t || t.producerId !== producerId) throw new Error('話が見つかりません'); // 自分の話だけ
     t.share = share;
     save();
     return { talkId, share };
   }
 
   // 本人が「今はわからん」→ その質問はその本人のリストの最後へ回す
-  function later(questionId) {
-    const i = state.questions.findIndex((x) => x.id === questionId);
+  function later({ producerId, questionId }) {
+    const i = state.questions.findIndex((x) => x.id === questionId && x.toId === producerId); // 自分あての質問だけ
     if (i < 0) throw new Error('質問が見つかりません');
     const [q] = state.questions.splice(i, 1);
     q.laterCount = (q.laterCount || 0) + 1;
@@ -178,8 +178,8 @@ export function createStore({
     return q;
   }
 
-  function setDone(taskId, done) {
-    const t = state.tasks.find((x) => x.id === taskId);
+  function setDone({ producerId, taskId, done }) {
+    const t = state.tasks.find((x) => x.id === taskId && x.producerId === producerId); // 自分の作業だけ
     if (!t) throw new Error('作業カードが見つかりません');
     t.done = !!done;
     t.doneAt = done ? today() : null;
@@ -283,5 +283,14 @@ export function createStore({
     return state;
   }
 
-  return { load, reset, talk, ask, later, setDone, setShare, view, all, askListFor };
+  // 専用リンクを配る相手（本人・継ぐ人・新人・町）
+  function people_() {
+    return [
+      ...viewers.map((v) => ({ id: v.id, label: v.label, role: v.role, title: v.title })),
+      ...producers.map((p) => ({ id: p.id, label: p.label, role: 'producer', title: `${p.district}・農業${p.years}年` })),
+      { id: 'town', label: town.label, role: 'town', title: `${town.name} ${town.section}` },
+    ];
+  }
+
+  return { load, reset, talk, ask, later, setDone, setShare, view, all, askListFor, people: people_, isProducer: (id) => !!producerOf(id), isViewer: (id) => !!viewerOf(id) };
 }
