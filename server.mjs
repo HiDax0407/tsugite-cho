@@ -26,8 +26,11 @@ const store = createStore();
 await store.load();
 // 一人ひとりの専用リンクの合言葉（data/runtime/keys.json・リポジトリに入れない）
 const keys = createKeys({ file: join(ROOT, 'data', 'runtime', 'keys.json'), ids: store.people().map((p) => p.id) });
-// デモの入口に全員の専用リンクを並べるか（架空データで試すため。本番で町が配るときは 0 にする）
-const DEMO_LINKS = process.env.DEMO_LINKS !== '0';
+// デモの入口に全員の専用リンクを並べるか（架空データで試すため）。
+// 手元（自分のパソコンの中だけで動かし、公開の名前も無い）なら最初から出す。公開するときは DEMO_LINKS=1 と書いたときだけ出す
+const LOCAL_ONLY = ['127.0.0.1', '::1', 'localhost'].includes(process.env.HOST || '127.0.0.1') && !process.env.PUBLIC_HOST;
+const DEMO_LINKS = process.env.DEMO_LINKS === '1' || (process.env.DEMO_LINKS !== '0' && LOCAL_ONLY);
+if (DEMO_LINKS && !LOCAL_ONLY) console.warn('注意：公開の設定で、入口に全員の専用リンクを出しています（架空データのデモ用）');
 const demo = JSON.parse(readFileSync(join(ROOT, 'data', 'demo_answers.json'), 'utf8'));
 
 const TYPES = {
