@@ -39,7 +39,7 @@ function render() {
 
     <h2>作物ごと</h2>
     <div class="scroll-x"><table class="tbl">
-      <thead><tr><th>作物</th><th>作る人</th><th>行</th><th>質問</th><th>聞いている</th><th>聞ける人なし</th></tr></thead>
+      <thead><tr><th>作物</th><th>作る<br>人</th><th>行</th><th>質問</th><th>聞いて<br>いる</th><th>聞ける<br>人なし</th></tr></thead>
       <tbody>${s.byCrop
         .map(
           (c) => `<tr class="${c.growers === 0 ? 'warn' : ''}"><td>${esc(c.crop)}</td><td>${c.growers}人</td><td>${c.lines}</td><td>${c.asked}</td><td>${c.waiting}</td><td>${c.noOne}</td></tr>`,
@@ -50,7 +50,7 @@ function render() {
 
     <h2>地区ごと</h2>
     <div class="scroll-x"><table class="tbl">
-      <thead><tr><th>地区</th><th>農家さん</th><th>話</th><th>行</th><th>見せている行</th></tr></thead>
+      <thead><tr><th>地区</th><th>農家<br>さん</th><th>話</th><th>行</th><th>見せて<br>いる行</th></tr></thead>
       <tbody>${s.byDistrict
         .map((d) => `<tr><td>${esc(d.district)}</td><td>${d.producers}人</td><td>${d.talks}</td><td>${d.lines}</td><td>${d.shared}</td></tr>`)
         .join('')}</tbody>
