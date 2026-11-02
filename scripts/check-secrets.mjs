@@ -40,14 +40,20 @@ export function badFileName(path) {
   return null;
 }
 
-// 見本の値（xxxxx や「ここに入れる」）は問題にしない
-const PLACEHOLDER = /(x{5,}|<[^>]+>|ここに|your[_-]?|example|dummy|placeholder)/i;
+// 見本の値（sk-ant-xxxxx…）は問題にしない。値の残りが全部 x のときだけ見本とみなす
+const PLACEHOLDER = /^[^x]*?[-_=:'"\s]x{5,}["']?$/i;
 
 export function scanText(text) {
   const found = [];
   for (const rule of CONTENT_RULES) {
-    const m = text.match(rule.re);
-    if (m && !PLACEHOLDER.test(m[0])) found.push(rule.name);
+    const re = new RegExp(rule.re.source, rule.re.flags.includes('g') ? rule.re.flags : rule.re.flags + 'g');
+    // 1つ目が見本でも、2つ目以降に本物があれば見つける
+    for (const m of text.matchAll(re)) {
+      if (!PLACEHOLDER.test(m[0])) {
+        found.push(rule.name);
+        break;
+      }
+    }
   }
   return found;
 }

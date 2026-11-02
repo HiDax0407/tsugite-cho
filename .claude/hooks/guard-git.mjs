@@ -35,6 +35,14 @@ const touchesRepo = /\b(commit|push)\b/i.test(cmd);
 if (!touchesRepo) process.exit(0);
 
 const dir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+
+// git のフック（いちばん確実な守り）が切られていたら止める
+try {
+  const hooksPath = execFileSync('git', ['config', 'core.hooksPath'], { cwd: dir }).toString().trim();
+  if (hooksPath !== '.githooks') throw new Error();
+} catch {
+  block('git のフックが有効になっていません。先に `npm run setup-hooks` を実行してください');
+}
 const script = join(dir, 'scripts', 'check-secrets.mjs');
 // コミットなら「入れる予定のもの」、push なら「今のファイル全部」を先に見る（送るコミットは git の pre-push が見る）
 const modes = /\bcommit\b/i.test(cmd) ? ['--staged', '--worktree'] : ['--worktree'];
