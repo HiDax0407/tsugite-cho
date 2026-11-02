@@ -1,0 +1,20 @@
+name: 検査（秘密情報・テスト）
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: 全履歴の秘密情報を検査
+        run: node scripts/check-secrets.mjs --history
+      - name: テスト
+        run: npm test

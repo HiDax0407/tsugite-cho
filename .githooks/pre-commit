@@ -1,0 +1,3 @@
+#!/bin/sh
+# コミットの直前に、秘密情報が混ざっていないかを調べる（見つかったら止める）
+exec node scripts/check-secrets.mjs --staged

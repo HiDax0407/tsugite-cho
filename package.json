@@ -1,0 +1,15 @@
+{
+  "name": "tsugite-cho",
+  "version": "0.1.0",
+  "private": true,
+  "description": "つぎて帳：生産者が話すだけで、段取りと判断のコツが「継ぐ人」のノートになる（Built with Claude: Japan 2026）",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test tests/",
+    "check-secrets": "node scripts/check-secrets.mjs --worktree",
+    "setup-hooks": "git config core.hooksPath .githooks"
+  },
+  "license": "MIT"
+}
