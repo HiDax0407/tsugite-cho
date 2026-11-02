@@ -7,7 +7,7 @@
 //   ・農業の助言をしない。聞き返しは質問だけ
 //   ・1日に呼ぶ回数に上限（CLAUDE_MAX_CALLS_PER_DAY）。超えたら見本の規則で動く
 
-import { splitSentences, organizeTalk, detectCrop, similarity } from './rules.mjs';
+import { splitSentences, organizeTalk, detectCrop, similarity, urgencyOf } from './rules.mjs';
 import { closeness } from './region.mjs';
 
 // 聞き返し・言い換え＝速い返事のため軽いモデル／まとめ・照合＝上位モデル
@@ -165,7 +165,9 @@ ${sentences.map((s, i) => `${i}：${s}`).join('\n')}`;
       context: t.i > 0 && lines[t.i - 1].kind === 'いまの様子' ? sentences[t.i - 1] : null,
       when,
       type: ['期限', '続き', '条件'].includes(t.type) ? t.type : '期限',
-      who: delegate ? `${ctx.ownerName}（${delegate}さんにも頼めるかも・本人の話）` : ctx.ownerName,
+      // 家の人への頼みごとは、見本の規則で見分けた担当をそのまま使う
+      who: ruleTask?.who?.includes('頼まれたこと') ? ruleTask.who : delegate ? `${ctx.ownerName}（${delegate}さんにも頼めるかも・本人の話）` : ctx.ownerName,
+      rank: urgencyOf(when),
     });
   }
   return { lines, tasks };
@@ -242,7 +244,7 @@ ${newTasks.length ? `\nこの話からできた作業：${newTasks.map((t) => `$
   const q = String(out.question || '').trim();
   // 質問の形で、短く、助言を含まないものだけ
   if (!q || q.length > 80 || !/[？?か]$/.test(q) || ADVICE.test(q)) throw new Error('聞き返しの形が決まりに合いません');
-  return { type: out.type, text: q };
+  return { type: out.type, crop: newLines[out.lineIndex]?.crop || null, text: q };
 }
 
 // 継ぐ人・新人の質問を、本人に伝わる言い方に（中身は変えない）

@@ -12,7 +12,8 @@ async function fresh() {
 test('最初は架空の聞き取りから、本人ごとのノートと作業カードができている', async () => {
   const s = await fresh();
   const v = s.view('p1');
-  assert.equal(v.talks.length, 4); // 山野さんはキックオフ前の4回
+  // 山野さんはキックオフ前の4回（そのまま）＋期間中に足した話
+  for (const id of ['t1', 't2', 't3', 't4']) assert.ok(v.talks.some((t) => t.id === id && t.source === 'prepared'));
   assert.ok(v.notes.length >= 15);
   assert.ok(v.tasks.length >= 5);
   assert.equal(v.ctx.mode, '見本');
@@ -84,4 +85,14 @@ test('ほかの本人あての質問・ほかの本人の作業は動かせな�
   assert.throws(() => s.later({ producerId: 'p1', questionId: q.id }));
   const t = s.view('p1').tasks[0];
   assert.throws(() => s.setDone({ producerId: 'p5', taskId: t.id, done: true }));
+});
+
+test('聞き返しへの答えは、聞き返した文の作物から始まる（本人が作っている作物だけ）', async () => {
+  const s = await fresh();
+  const r1 = await s.talk({ producerId: 'p4', text: '里芋はええ頃になったら掘る。' });
+  assert.equal(r1.followup.type, '見るところ');
+  const r2 = await s.talk({ producerId: 'p4', text: '葉が半分くらい黄色うなって、倒れてきたら掘り時。', hintCrop: r1.followup.crop });
+  assert.equal(r2.newLines[0].crop, '里芋');
+  const r3 = await s.talk({ producerId: 'p4', text: '葉が黄色うなったら。', hintCrop: 'ピーマン' }); // 作っていない作物は使わない
+  assert.equal(r3.newLines[0].crop, '畑全体');
 });

@@ -24,7 +24,13 @@ const FEELING = /(痛|きつい|しんどい|疲れ|眠)/;
 const STATUS = /(足りん|足りない|なっとる|なってる|もう終わり|終わりや)/;
 const OBLIGATION = /(んといかん|ないといかん|ないといけない|なきゃ|[わらさまかがた]んと(間に合わん|割れる|いかん)?|せんと)/;
 // 期限のことば（先に並べたものほど優先：「月末締めやから、今週中に」なら今週中）
-const WHEN_WORDS = [/今日中?/, /明日|あした/, /あさって/, /今週中/, /今週/, /再来週/, /来週/, /次の日/, /朝のうち/, /[一-龥]{1,3}が(?:来る|続く|降る)前/, /月末/, /来月/];
+const WHEN_WORDS = [/今日中?/, /明後日|あさって/, /明日|あした/, /今週中/, /今週/, /週末/, /[月火水木金土日]曜日?/, /再来週/, /来週/, /次の日/, /朝のうち/, /昼まで/, /夕方まで/, /[一-龥]{1,3}が(?:来る|続く|降る)前/, /今月中/, /月末/, /来月/];
+// 急ぐ順（作業カードを並べるため）。前にあるものほど急ぐ
+const URGENCY = [/今日|朝のうち|昼まで|夕方まで/, /明日|あした|次の日/, /明後日|あさって/, /今週|週末|曜/, /前$/, /来週|再来週/, /今月中|月末/, /来月/];
+export function urgencyOf(when) {
+  const i = URGENCY.findIndex((re) => re.test(when || ''));
+  return i < 0 ? URGENCY.length : i;
+}
 function findWhen(s) {
   for (const re of WHEN_WORDS) {
     const m = s.match(re);
@@ -38,7 +44,11 @@ const REASON = /(けん[、,]|けんな|やから|だから|から、|ので|と
 const FAILURE = /(去年|前に一度|昔).*(ダメ|失敗|遅れ|やられ)/;
 const NOT_TAUGHT = /(教えとらん|教えてない|教えていない|まだ教え)/;
 const HARD = /(難しい|むずかしい|コツがいる)/;
-const ACTION = /(とる|掘|抜|まく|ふる|ふって|寝かせ|出す|切り直す|片付け|頼む|言う|言わん|植え|刈|干す|運ぶ|箱|洗)/;
+const ACTION = /(とる|掘|抜|まく|ふる|ふって|寝かせ|出す|出して|切り直す|片付け|頼む|言う|言わん|植え|刈|干す|運ぶ|箱|洗|入れ|積|詰め|見に行)/;
+// 家の人への頼みごと（「積んどいてくれ」「軽トラ出してくれ」）
+const REQUEST = /(てくれ|といてくれ|どいてくれ|ておいて|といて|てほしい|頼むぞ|頼むわ)[。！!]?$/;
+// あいまいな判断（いちばん引き継ぎたい勘どころ。どこを見て決めるかを聞き返す）
+export const VAGUE = /(ええ頃|ええころ|いい頃|ころあい|頃合い|ちょうどええ|ほどほど|適当に|様子を見て|見はからって|それなりに)/;
 
 // 質問に出てくる作物を見分けるための名前（地域の誰も作っていない作物でも「聞ける人がいない」と分かるように）
 export const COMMON_CROPS = ['オクラ', 'かぼちゃ', 'さつまいも', '里芋', 'ピーマン', 'にんにく', 'たまねぎ', '玉ねぎ', 'トマト', 'なす', 'きゅうり', 'キャベツ', '白菜', '大根', 'ねぎ', 'じゃがいも', 'いちご', 'ほうれん草', 'ブロッコリー', 'にんじん', 'しょうが', '米'];
@@ -95,6 +105,24 @@ export function organizeTalk(talk, { crops, people, startCrop = null, ownerName 
       prevLine = line;
       return;
     }
+    // 家の人への頼みごと：呼びかけた名前があればその人、無ければ「家の人」
+    if (REQUEST.test(s) && ACTION.test(s)) {
+      const to = given.find((g) => new RegExp(`^${g}(さん)?[、,]`).test(s));
+      const t = {
+        talkId: talk.id,
+        lineIndex: i,
+        crop: crop || '畑全体',
+        quote: s,
+        context: null,
+        when: findWhen(s) || 'できるだけ早く',
+        type: '期限',
+        who: `${to ? `${to}さん` : '家の人'}（${ownerName}から頼まれたこと）`,
+      };
+      t.rank = urgencyOf(t.when);
+      tasks.push(t);
+      prevLine = line;
+      return;
+    }
     if (kind !== 'コツ' || !ACTION.test(s)) {
       prevLine = line;
       return;
@@ -122,6 +150,7 @@ export function organizeTalk(talk, { crops, people, startCrop = null, ownerName 
         type: task.type,
         who: ownerName,
       };
+      t.rank = urgencyOf(t.when);
       tasks.push(t);
       prevTask = t;
     }
@@ -196,17 +225,26 @@ export function findAnswer(questionText, noteLines, crops) {
   return { answered: true, quotes: fit.slice(0, 2), related };
 }
 
+function l2word(s) {
+  return s.match(VAGUE)[0];
+}
+
 // 本人への聞き返し（1回に1つだけ）。継ぐ人の質問がたまっていれば、それを先に聞く。
 export function pickFollowup({ askList, newTasks, newLines, successorName }) {
   if (askList.length > 0) {
     const q = askList[0];
     return { type: '継ぐ人の質問', questionId: q.id, text: `${q.askerVoice || `${successorName}さん`}が聞きたいそうです。「${q.text}」` };
   }
-  const noWhen = newTasks.find((t) => t.when === 'できるだけ早く');
-  if (noWhen) return { type: '時期', text: `「${noWhen.quote}」は、いつごろやりますか？` };
+  const vague = newLines.find((l) => VAGUE.test(l.quote));
+  if (vague) {
+    const word = l2word(vague.quote);
+    return { type: '見るところ', crop: vague.crop, text: `「${word}」は、どこを見て決めとりますか？` };
+  }
+  const noWhen = newTasks.find((t) => t.when === 'できるだけ早く' && !REQUEST.test(t.quote));
+  if (noWhen) return { type: '時期', crop: noWhen.crop, text: `「${noWhen.quote}」は、いつごろやりますか？` };
   const noAmount = newLines.find((l) => /(まく|ふる|ふって|やる|入れる)/.test(l.quote) && !questionKind('どのくらい').need.test(l.quote));
-  if (noAmount) return { type: '量', text: `「${noAmount.quote}」は、どのくらいの量ですか？` };
+  if (noAmount) return { type: '量', crop: noAmount.crop, text: `「${noAmount.quote}」は、どのくらいの量ですか？` };
   const noReason = newLines.find((l) => l.tags.includes('判断のコツ') && !l.tags.includes('理由つき'));
-  if (noReason) return { type: '理由', text: `「${noReason.quote}」は、なんでそうするんですか？` };
+  if (noReason) return { type: '理由', crop: noReason.crop, text: `「${noReason.quote}」は、なんでそうするんですか？` };
   return null;
 }

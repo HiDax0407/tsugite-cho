@@ -95,7 +95,7 @@ function renderTalk() {
       <button class="btn primary wide" data-act="again">${currentQuestion() ? '次の質問に答える' : 'ほかにも話す'}</button>`;
   }
 
-  const sample = q ? demoAnswers()[q.text] : demoFrees()[0];
+  const sample = q ? demoAnswers()[q.text] : gapQuestion ? demoAnswers()[gapQuestion.text] : demoFrees()[0];
   const typed = phase === 'saved' ? '' : `
     <details class="card"><summary>文字で入れる</summary>
       <textarea id="typed" rows="3" style="margin-top:10px" placeholder="ここに書いても残せます"></textarea>
@@ -110,7 +110,8 @@ function renderTasks() {
   const open = st.tasks.filter((t) => !t.done);
   const done = st.tasks.filter((t) => t.done);
   const typeOrder = { 期限: 0, 続き: 1, 条件: 2 };
-  open.sort((a, b) => (typeOrder[a.type] ?? 9) - (typeOrder[b.type] ?? 9) || b.date.localeCompare(a.date));
+  // 急ぐ順（今日・明日・…）→ 種類 → 新しい話から
+  open.sort((a, b) => (a.rank ?? 9) - (b.rank ?? 9) || (typeOrder[a.type] ?? 9) - (typeOrder[b.type] ?? 9) || b.date.localeCompare(a.date));
   const card = (t) => `<div class="card task ${t.done ? 'done' : ''}">
       <div>
         <div class="when">${esc(t.when)}</div>
@@ -183,7 +184,7 @@ function replyOf(r) {
 
 async function save(text) {
   const q = currentQuestion();
-  const r = await api('/api/talk', { text, questionId: q ? q.id : null });
+  const r = await api('/api/talk', { text, questionId: q ? q.id : null, hintCrop: !q && gapQuestion ? gapQuestion.crop || null : null });
   reply = replyOf(r);
   heard = '';
   phase = 'saved';
@@ -214,7 +215,7 @@ main.addEventListener('click', async (e) => {
     phase = 'idle';
     render();
   } else if (act === 'sample') {
-    heard = (q ? demoAnswers()[q.text] : demoFrees()[0]) || '';
+    heard = (q ? demoAnswers()[q.text] : gapQuestion ? demoAnswers()[gapQuestion.text] : demoFrees()[0]) || '';
     phase = heard ? 'heard' : 'idle';
     render();
   } else if (act === 'hear-q' && q) speak(questionVoice(q));

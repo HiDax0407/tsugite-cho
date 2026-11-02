@@ -78,7 +78,7 @@ const routes = {
     if (!DEMO_LINKS) throw Object.assign(new Error('ありません'), { status: 404 });
     return store.people().map((p) => ({ ...p, key: keys.tokenOf(p.id) }));
   },
-  'POST /api/talk': async (body, who) => store.talk({ producerId: need(who, 'producer'), text: body.text, questionId: body.questionId || null }),
+  'POST /api/talk': async (body, who) => store.talk({ producerId: need(who, 'producer'), text: body.text, questionId: body.questionId || null, hintCrop: typeof body.hintCrop === 'string' ? body.hintCrop : null }),
   'POST /api/ask': async (body, who) => store.ask({ askerId: need(who, 'viewer'), text: body.text }),
   'POST /api/share': async (body, who) => store.setShare({ producerId: need(who, 'producer'), talkId: body.talkId, share: body.share }),
   'POST /api/later': async (body, who) => store.later({ producerId: need(who, 'producer'), questionId: body.questionId }),

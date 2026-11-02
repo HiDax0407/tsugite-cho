@@ -95,7 +95,7 @@ export function createStore({
   }
 
   // 本人が話す。questionId があれば、その質問への答えとして残す
-  async function talk({ producerId = 'p1', text, questionId = null }) {
+  async function talk({ producerId = 'p1', text, questionId = null, hintCrop = null }) {
     const p = producerOf(producerId);
     if (!p) throw new Error('この本人は登録されていません');
     const clean = String(text || '').trim();
@@ -104,7 +104,7 @@ export function createStore({
     const t = { id: nextId('t'), producerId, date: today(), speaker: producerId, text: clean, source: 'app', share: 'family', answersQuestionId: q ? q.id : null };
     state.talks.push(t);
     // 答えの作物：質問の作物（本人が作っていれば）→ 質問に近いノートの行の作物
-    let startCrop = null;
+    let startCrop = hintCrop && p.crops.includes(hintCrop) ? hintCrop : null; // 聞き返しへの答え
     if (q) {
       const near = (q.relatedIds || []).map((id) => state.notes.find((n) => n.id === id)).find((n) => n && n.crop !== '畑全体' && p.crops.includes(n.crop));
       startCrop = (q.crop && p.crops.includes(q.crop) ? q.crop : null) || near?.crop || null;

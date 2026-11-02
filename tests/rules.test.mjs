@@ -91,3 +91,27 @@ test('聞き返しは1つだけ。継ぐ人の質問がたまっていれば、�
 test('文の区切り', () => {
   assert.deepEqual(splitSentences('とる。寝かせる！ほんとか？'), ['とる。', '寝かせる！', 'ほんとか？']);
 });
+
+test('期限の言葉を広く拾い、急ぐ順の目安を付ける（明後日・週末・土曜・今月中）', async () => {
+  const { urgencyOf } = await import('../src/rules.mjs');
+  const r = organizeTalk({ id: 'x', date: '2026-11-02', text: '週末は雨やけん、その前にさつまいもを掘ってしまう。今月中に堆肥を入れる。' }, ctx);
+  assert.deepEqual(r.tasks.map((t) => t.when), ['週末', '今月中']);
+  assert.ok(urgencyOf('今日') < urgencyOf('明後日'));
+  assert.ok(urgencyOf('明後日') < urgencyOf('来週'));
+  assert.ok(urgencyOf('来週') < urgencyOf('月末'));
+});
+
+test('家の人への頼みごとは作業カードになる（呼びかけた名前があればその人）', () => {
+  const r = organizeTalk({ id: 'x', date: '2026-11-02', text: 'コンテナを十個、軽トラに積んどいてくれ。健太、土曜に軽トラ出してくれ。' }, { ...ctx, ownerName: '山野さん' });
+  assert.equal(r.tasks[0].who, '家の人（山野さんから頼まれたこと）');
+  assert.equal(r.tasks[1].who, '健太さん（山野さんから頼まれたこと）');
+  assert.equal(r.tasks[1].when, '土曜');
+});
+
+test('あいまいな判断（ええ頃）は、どこを見て決めるかを最初に聞き返す', () => {
+  const r = organizeTalk({ id: 'x', date: '2026-11-02', text: 'さつまいもはええ頃になったら掘る。' }, ctx);
+  const f = pickFollowup({ askList: [], newTasks: r.tasks, newLines: r.lines, successorName: '' });
+  assert.equal(f.type, '見るところ');
+  assert.equal(f.text, '「ええ頃」は、どこを見て決めとりますか？');
+  assert.equal(f.crop, 'さつまいも');
+});
