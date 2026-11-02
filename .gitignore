@@ -1,0 +1,16 @@
+# 秘密情報（API キーなど）は絶対にコミットしない
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+credentials*.json
+
+# 動かしたときにできるもの（話した内容・作業カードの記録）
+data/runtime/
+node_modules/
+tmp/
+*.log
+.DS_Store
