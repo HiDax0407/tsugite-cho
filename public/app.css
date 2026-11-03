@@ -91,6 +91,29 @@ body.big .btn { min-height: 64px; font-size: 22px; border-radius: 16px; }
 .who-head .small { font-weight: 400; color: var(--muted); }
 
 /* 町の画面 */
+.chip.no { text-decoration: line-through; text-decoration-color: var(--accent); text-decoration-thickness: 2px; }
+.not-shown { padding: 10px 14px; }
+.print-only { display: none; }
+@media print {
+  @page { size: A4; margin: 12mm; }
+  html, body { background: #fff; color: #000; }
+  body { font-size: 12px; line-height: 1.4; }
+  .top, .tabs, .no-print { display: none !important; }
+  .print-only { display: block; }
+  .print-head { border-bottom: 2px solid #000; padding-bottom: 4px; margin-bottom: 6px; font-size: 13px; }
+  .wrap { max-width: none !important; padding: 0; }
+  h2 { font-size: 14px; margin: 10px 0 4px; }
+  .stat.four { grid-template-columns: repeat(4, 1fr); gap: 4px; }
+  .stat div { padding: 4px 6px; border-color: #999; border-radius: 4px; }
+  .stat b { font-size: 18px; }
+  .tbl { font-size: 11px; border-color: #999; border-radius: 0; }
+  .tbl th, .tbl td { padding: 2px 6px; border-color: #ccc; }
+  .tbl th { background: #eee; color: #000; }
+  .tbl tr.warn td { color: #000; text-decoration: underline; }
+  .card { padding: 4px 8px; margin: 3px 0; border-color: #999; border-radius: 4px; }
+  .small { font-size: 10px; }
+  .notice { margin-top: 10px; padding-top: 4px; border-color: #999; }
+}
 .stat.four { grid-template-columns: repeat(2, 1fr); }
 @media (min-width: 520px) { .stat.four { grid-template-columns: repeat(4, 1fr); } }
 .tbl { width: 100%; border-collapse: collapse; font-size: 15px; background: #fff; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
