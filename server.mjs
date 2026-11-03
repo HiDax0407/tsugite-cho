@@ -83,6 +83,9 @@ const routes = {
   'POST /api/share': async (body, who) => store.setShare({ producerId: need(who, 'producer'), talkId: body.talkId, share: body.share }),
   'POST /api/later': async (body, who) => store.later({ producerId: need(who, 'producer'), questionId: body.questionId }),
   'POST /api/done': async (body, who) => store.setDone({ producerId: need(who, 'producer'), taskId: body.taskId, done: body.done }),
+  // 本人が自分の話を消す／自分の記録を全部持ち出す（データは本人のもの。自分の分だけ）
+  'POST /api/forget': async (body, who) => store.forget({ producerId: need(who, 'producer'), talkId: body.talkId }),
+  'GET /api/mine': (_, who) => store.exportMine(need(who, 'producer')),
   'POST /api/reset': async () => {
     if (!DEMO_LINKS) throw Object.assign(new Error('ありません'), { status: 404 });
     await store.reset();

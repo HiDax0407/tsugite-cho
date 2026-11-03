@@ -144,9 +144,23 @@ function renderTalks() {
       .map(
         (t) => `<div class="card"><div class="small muted">${esc(when(t.date, st.ctx.today))}の話</div>
         <p style="margin:4px 0 0">${esc(t.text)}</p>${shareButtons(t.id, t.share || 'family')}
-        <div class="small muted" style="margin-top:8px">見せる範囲の記録：${esc(log(t)) || 'まだありません'}</div></div>`,
+        <div class="small muted" style="margin-top:8px">見せる範囲の記録：${esc(log(t)) || 'まだありません'}</div>
+        <p style="margin:8px 0 0;text-align:right"><button class="linkish" data-act="forget" data-talk="${esc(t.id)}">この話を消す</button></p></div>`,
       )
-      .join('')}`;
+      .join('')}
+    <div class="card"><b>記録は、${esc(me().label)}のものです。</b>
+      <p class="small muted" style="margin:4px 0 10px">話・ノートの行・作業カードを全部、ファイルにして持ち出せます（ほかの人のものは入りません）。</p>
+      <button class="btn wide" data-act="export">自分の記録を全部、持ち出す</button></div>`;
+}
+
+// 持ち出した記録を、ファイルとして端末に保存する
+function download(name, data) {
+  const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+  const a = Object.assign(document.createElement('a'), { href: url, download: name });
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function render() {
@@ -248,6 +262,15 @@ main.addEventListener('click', async (e) => {
     await api('/api/share', { talkId: b.dataset.talk, share });
     await refresh();
     speak(`「${st.ctx.shareNames[share]}」にしました。`);
+  } else if (act === 'forget') {
+    if (!confirm('この話と、そこからできたノートの行・作業カードを消します。もう戻せません。よろしいですか？')) return;
+    await api('/api/forget', { talkId: b.dataset.talk });
+    await refresh();
+    speak('消しました。');
+  } else if (act === 'export') {
+    const data = await api('/api/mine');
+    download(`tsugite-${me().id}-${st.ctx.today}.json`, data);
+    speak('記録をファイルにしました。');
   }
 });
 

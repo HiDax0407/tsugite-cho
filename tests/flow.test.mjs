@@ -87,6 +87,37 @@ test('ほかの本人あての質問・ほかの本人の作業は動かせな�
   assert.throws(() => s.setDone({ producerId: 'p5', taskId: t.id, done: true }));
 });
 
+test('本人は自分の話を消せる（ノートの行・作業カードも消え、答えていた質問は「本人に聞く」に戻る）。ほかの本人の話は消せない', async () => {
+  const s = await fresh();
+  const q = await s.ask({ askerId: 'p6', text: '石灰はどのくらいの量をまけばいいですか？' });
+  const r = await s.talk({ producerId: 'p5', text: '石灰はな、うちは川口の畑で一反に一袋半。明日は袋詰めをする。', questionId: q.id });
+  assert.ok(s.all().tasks.some((k) => k.talkId === r.talk.id));
+  assert.throws(() => s.forget({ producerId: 'p1', talkId: r.talk.id })); // 自分の話だけ
+  const before = s.view('p6').notes.length;
+  const out = s.forget({ producerId: 'p5', talkId: r.talk.id });
+  assert.equal(out.removedLines, r.newLines.length);
+  assert.ok(!s.all().talks.some((t) => t.id === r.talk.id));
+  assert.ok(!s.all().notes.some((n) => n.talkId === r.talk.id));
+  assert.ok(!s.all().tasks.some((k) => k.talkId === r.talk.id));
+  assert.equal(s.view('p6').notes.length, before - r.newLines.length);
+  const back = s.all().questions.find((x) => x.id === q.id);
+  assert.equal(back.status, '本人に聞く');
+  assert.deepEqual(back.answerNoteIds, []);
+  assert.equal(s.askListFor('p5').length, 1); // 次に話すとき、また聞かれる
+});
+
+test('本人は自分の記録を全部持ち出せる（自分の分だけ。ほかの人の話は入らない）', async () => {
+  const s = await fresh();
+  const mine = s.exportMine('p5');
+  assert.equal(mine.person.label, '川端さん');
+  assert.ok(mine.talks.length >= 4 && mine.notes.length > 0 && mine.tasks.length > 0);
+  const all = s.all();
+  for (const t of mine.talks) assert.equal(all.talks.find((x) => x.id === t.id).producerId, 'p5');
+  for (const n of mine.notes) assert.equal(all.notes.find((x) => x.id === n.id).producerId, 'p5');
+  assert.ok(mine.talks.every((t) => Array.isArray(t.shareLog)));
+  assert.throws(() => s.exportMine('p6')); // 本人でない人の分は無い
+});
+
 test('聞き返しへの答えは、聞き返した文の作物から始まる（本人が作っている作物だけ）', async () => {
   const s = await fresh();
   const r1 = await s.talk({ producerId: 'p4', text: '里芋はええ頃になったら掘る。' });

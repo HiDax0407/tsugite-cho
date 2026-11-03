@@ -143,6 +143,44 @@ export function createStore({
     return { talkId, share, shareLog: t.shareLog };
   }
 
+  // 本人が自分の話を消す（データは本人のもの）。ノートの行・作業カードも消え、
+  // その話で答えていた質問は「本人に聞く」に戻る（答えを引っ込めたので、次に話すときにまた聞かれる。「今はわからん」で後回しにもできる）
+  function forget({ producerId, talkId }) {
+    const t = talkOf(talkId);
+    if (!t || t.producerId !== producerId) throw new Error('話が見つかりません'); // 自分の話だけ
+    const gone = new Set(state.notes.filter((n) => n.talkId === talkId).map((n) => n.id));
+    state.talks = state.talks.filter((x) => x.id !== talkId);
+    state.notes = state.notes.filter((n) => n.talkId !== talkId);
+    state.tasks = state.tasks.filter((k) => k.talkId !== talkId);
+    for (const q of state.questions) {
+      if (q.answerTalkId === talkId) {
+        q.status = '本人に聞く';
+        q.answerTalkId = null;
+        q.answerNoteIds = [];
+        q.answeredAt = null;
+      }
+      q.noteIds = (q.noteIds || []).filter((id) => !gone.has(id));
+      q.relatedIds = (q.relatedIds || []).filter((id) => !gone.has(id));
+      q.sources = (q.sources || []).map((s) => ({ ...s, noteIds: s.noteIds.filter((id) => !gone.has(id)) })).filter((s) => s.noteIds.length);
+    }
+    save();
+    return { talkId, removedLines: gone.size };
+  }
+
+  // 本人が自分の記録を全部持ち出す（話・ノートの行・作業カード。ほかの人のものは入らない）
+  function exportMine(producerId) {
+    const p = producerOf(producerId);
+    if (!p) throw new Error('この本人は登録されていません');
+    return {
+      _note: 'つぎて帳から持ち出した本人の記録です。言葉の権利は本人にあります。人名・地名・数字はすべて架空のデモデータです。',
+      person: { id: p.id, label: p.label, district: p.district },
+      exportedAt: today(),
+      talks: state.talks.filter((t) => t.producerId === producerId).map(({ id, date, text, share, shareLog }) => ({ id, date, text, share, shareLog })),
+      notes: state.notes.filter((n) => n.producerId === producerId).map(({ id, talkId, date, season, crop, kind, tags, quote }) => ({ id, talkId, date, season, crop, kind, tags, quote })),
+      tasks: state.tasks.filter((k) => k.producerId === producerId).map(({ id, talkId, when, type, quote, who, done, doneAt }) => ({ id, talkId, when, type, quote, who, done, doneAt })),
+    };
+  }
+
   // 本人が「今はわからん」→ その質問はその本人のリストの最後へ回す
   function later({ producerId, questionId }) {
     const i = state.questions.findIndex((x) => x.id === questionId && x.toId === producerId); // 自分あての質問だけ
@@ -303,5 +341,5 @@ export function createStore({
     ];
   }
 
-  return { load, reset, talk, ask, later, setDone, setShare, view, all, askListFor, people: people_, isProducer: (id) => !!producerOf(id), isViewer: (id) => !!viewerOf(id) };
+  return { load, reset, talk, ask, later, setDone, setShare, forget, exportMine, view, all, askListFor, people: people_, isProducer: (id) => !!producerOf(id), isViewer: (id) => !!viewerOf(id) };
 }
