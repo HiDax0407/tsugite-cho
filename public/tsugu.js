@@ -2,9 +2,10 @@
 // 見えるのは、本人が見せてよいとした話だけ。1行ごとに、誰が・いつ話したかと元の言葉にたどれる。
 // 無いことは答えを作らず、いちばん近い本人1人に聞く。
 import { api, esc, when, makeListener, MIC_SVG, poll, KEY, noKey } from '/common.js';
-import { paintMode, setBy } from '/common.js';
+import { paintMode, setBy, sizeToggle } from '/common.js';
 
 const main = document.getElementById('main');
+sizeToggle();
 let st = null;
 let demo = null;
 let tab = 'note';

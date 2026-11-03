@@ -21,6 +21,20 @@ button { font: inherit; cursor: pointer; }
 .top .who { font-weight: 700; font-size: 18px; }
 .top .mode { font-size: 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 99px; padding: 2px 10px; white-space: nowrap; transition: background 0.3s; }
 .top .mode.working { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); font-weight: 700; text-align: right; border-radius: 12px; }
+.top .top-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.sizebtn { font-size: 12px; color: var(--muted); border: 1px solid var(--line); background: #fff; border-radius: 99px; padding: 2px 10px; white-space: nowrap; }
+.sizebtn[aria-pressed='true'] { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+/* 「字を大きく」：継ぐ人・新人・町の画面を、ひとまわり大きい字に */
+body.large { font-size: 20px; }
+body.large h1 { font-size: 30px; }
+body.large h2 { font-size: 23px; }
+body.large .quote { font-size: 21px; }
+body.large .small, body.large .note .meta, body.large .linkish { font-size: 16px; }
+body.large .chip { font-size: 14px; }
+body.large .tabs button { font-size: 18px; }
+body.large .btn { min-height: 56px; font-size: 20px; }
+body.large .stat b { font-size: 30px; }
+body.large .tbl { font-size: 17px; }
 h1 { font-size: 26px; line-height: 1.35; margin: 8px 0 4px; }
 h2 { font-size: 20px; margin: 22px 0 8px; }
 .lead { color: var(--muted); margin: 0 0 14px; }

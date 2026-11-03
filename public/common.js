@@ -84,6 +84,32 @@ export function poll(fn, ms = 4000) {
   }, ms);
 }
 
+// 「字を大きく」の切り替え（継ぐ人・新人・町の画面。本人の画面は最初から大きい）。選んだ大きさは端末に覚える
+export function sizeToggle() {
+  const KEY = 'tsugite-large';
+  let on = false;
+  try {
+    on = localStorage.getItem(KEY) === '1';
+  } catch {}
+  const apply = () => document.body.classList.toggle('large', on);
+  apply();
+  const el = document.getElementById('size');
+  if (!el) return;
+  const paint = () => {
+    el.textContent = on ? '字を戻す' : '字を大きく';
+    el.setAttribute('aria-pressed', String(on));
+  };
+  paint();
+  el.addEventListener('click', () => {
+    on = !on;
+    try {
+      localStorage.setItem(KEY, on ? '1' : '0');
+    } catch {}
+    apply();
+    paint();
+  });
+}
+
 // 画面の右上に「いまの整理のしかた」を出す。AI が働いた直後だけ「役：だれが」を少しのあいだ出す
 //   例：「照合：Claude Opus 5.5」／キーが無いあいだは「照合：見本（未接続）」
 let modeDefault = '';
