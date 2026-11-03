@@ -168,6 +168,7 @@ function sourcesHtml(q) {
 
 function resultHtml(q) {
   if (q.status === 'ノートにあった') {
+    if (!(q.sources || []).length) return `<div class="card accent"><b>この質問に答えていた話は、本人が消しました。</b><p class="small muted" style="margin:6px 0 0">もう一度聞くと、いまのノートから探します。</p></div>`;
     const many = (q.sources || []).length > 1;
     return `<div class="card accent"><b>ノートにありました${many ? `（${q.sources.length}人の言葉）` : ''}</b>${sourcesHtml(q)}
       <p class="small muted" style="margin:8px 0 0">AI が答えを作ったのではなく、本人が話した言葉をそのまま出しています。${many ? '畑の場所や作り方で言い方が違うことがあります。近い人から順に並べています。' : ''}</p></div>`;
