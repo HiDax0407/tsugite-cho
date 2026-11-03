@@ -41,9 +41,11 @@ const listener = makeListener({
   onEnd(t) {
     draft = (t || draft).trim();
     listening = false;
-    render();
+    if (draft) ask(draft); // 話し終えたら、そのまま答えを探す（畑で片手で使えるように）
+    else render();
   },
 });
+let seasonFirst = false; // 「いまの時期の話を先に」
 
 const me = () => st.me;
 const prod = (id) => st.ctx.producers.find((p) => p.id === id) || { label: '本人', district: '' };
@@ -51,9 +53,19 @@ const talkOf = (id) => st.talks.find((t) => t.id === id);
 const noteOf = (id) => st.notes.find((n) => n.id === id);
 const qOf = (id) => st.questions.find((q) => q.id === id);
 
+// 聞く人にとって、その農家さんがどれだけ近いか（行の左の帯の濃さと、印の言葉）
+function nearOf(producerId) {
+  const p = prod(producerId);
+  if (producerId === me().familyOf) return { cls: 'near-1', label: '家族' };
+  if (producerId === me().mentor) return { cls: 'near-1', label: '研修先' };
+  if (me().district && p.district === me().district) return { cls: 'near-2', label: `同じ${p.district}` };
+  return { cls: 'near-3', label: '' };
+}
+
 function noteLine(n) {
   const talk = talkOf(n.talkId);
   const p = prod(n.producerId);
+  const near = nearOf(n.producerId);
   const q = n.answersQuestionId ? qOf(n.answersQuestionId) : null;
   const isNew = talk?.source === 'app' && n.date === st.ctx.today;
   const tags = [...(n.kind === 'いまの様子' ? ['いまの様子'] : []), ...n.tags];
@@ -62,11 +74,11 @@ function noteLine(n) {
     const full = esc(talk.text).replace(esc(n.quote), `<mark>${esc(n.quote)}</mark>`);
     src = `<div class="src"><div class="small muted">${esc(when(talk.date, st.ctx.today))}に${esc(p.label)}が話したこと（そのまま）</div>${full}</div>`;
   }
-  return `<div class="note ${q ? 'answer' : ''} ${n.kind === 'いまの様子' ? 'state' : ''}" id="note-${n.id}">
+  return `<div class="note ${near.cls} ${q ? 'answer' : ''} ${n.kind === 'いまの様子' ? 'state' : ''}" id="note-${n.id}">
     ${q ? `<div class="small" style="color:var(--accent);font-weight:700">あなたの質問への答え：「${esc(q.text)}」${isNew ? '<span class="badge">新しく入りました</span>' : ''}</div>` : ''}
     <div class="quote">${esc(n.quote)}</div>
     ${tags.length ? `<div class="chips">${tags.map((t) => `<span class="chip">${esc(t)}</span>`).join('')}</div>` : ''}
-    <div class="meta">${esc(when(n.date, st.ctx.today))}の話・${esc(p.label)}（${esc(p.district)}）の言葉
+    <div class="meta">${esc(when(n.date, st.ctx.today))}の話・<b>${esc(p.label)}</b>（${esc(p.district)}）の言葉${near.label ? `<span class="chip near">${esc(near.label)}</span>` : ''}
       <button class="linkish" data-act="src" data-id="${n.id}">${openSrc.has(n.id) ? '元の話を閉じる' : '元の話を見る'}</button></div>
     ${src}
   </div>`;
@@ -84,14 +96,20 @@ function renderNote() {
   const today = st.notes.filter((n) => n.date === st.ctx.today && talkOf(n.talkId)?.source === 'app').length;
   const shown = cropFilter === '全部' ? crops : [cropFilter];
   const pick = (n) => whoFilter === '全員' || n.producerId === whoFilter;
-  const groups = shown
+  // いまの時期（今月）の話を先に：作物の中でも、作物の並びでも、今月の話が多いものが上
+  const month = Number(st.ctx.today.slice(5, 7));
+  const isNow = (l) => l.season.startsWith(`${month}月`);
+  const nowCount = (c) => st.notes.filter((n) => n.crop === c && pick(n) && isNow(n)).length;
+  const order = seasonFirst ? [...shown].sort((a, b) => nowCount(b) - nowCount(a)) : shown;
+  const groups = order
     .map((c) => {
       const lines = st.notes
         .filter((n) => n.crop === c && pick(n))
-        .sort((a, b) => rank(a) - rank(b) || a.date.localeCompare(b.date) || a.index - b.index);
+        .sort((a, b) => (seasonFirst ? isNow(b) - isNow(a) : 0) || rank(a) - rank(b) || a.date.localeCompare(b.date) || a.index - b.index);
       if (!lines.length) return '';
       const seasons = [...new Set(lines.map((l) => l.season))].join('・');
-      return `<div class="crop-head"><h2>${esc(c)}</h2><span class="small muted">${esc(seasons)}の話</span></div>${lines.map(noteLine).join('')}`;
+      const nowN = seasonFirst ? nowCount(c) : 0;
+      return `<div class="crop-head"><h2>${esc(c)}</h2><span class="small muted">${nowN ? `<b>${month}月の話 ${nowN}行</b>・` : ''}${esc(seasons)}の話</span></div>${lines.map(noteLine).join('')}`;
     })
     .join('');
   const lead =
@@ -105,7 +123,8 @@ function renderNote() {
       <div><b>${st.notes.length}</b><span class="small">行のノート${today ? `<br><span class="badge" style="margin:2px 0 0">今日 +${today}</span>` : ''}</span></div>
       <div><b>${asking}</b><span class="small">本人に聞いている</span></div>
     </div>
-    <div class="chips" style="margin-top:14px">${['全部', ...crops]
+    <div class="chips" style="margin-top:14px"><button class="chip ${seasonFirst ? 'on' : ''}" data-act="season" aria-pressed="${seasonFirst}">いまの時期（${month}月）の話を先に</button></div>
+    <div class="chips">${['全部', ...crops]
       .map((c) => `<button class="chip ${c === cropFilter ? 'on' : ''}" data-act="crop" data-crop="${esc(c)}">${esc(c)}</button>`)
       .join('')}</div>
     <div class="chips">${['全員', ...whos]
@@ -184,10 +203,15 @@ function renderAsk() {
     <p class="lead">ノートにあれば、話した人の言葉で答えます。無ければ答えを作らず、いちばん近い農家さん1人に聞きます。</p>
     ${current ? resultHtml(current) : ''}
     <div class="card">
-      <textarea id="q" rows="2" placeholder="例：かぼちゃはいつとればいいですか？">${esc(draft)}</textarea>
+      ${
+        listener
+          ? `<button class="btn primary voice ${listening ? 'listening' : ''}" data-act="mic" aria-pressed="${listening}">${MIC_SVG.replace(/44/g, '30')}<span>${listening ? '聞いています　終わったら押す' : '押して、声で聞く'}</span></button>
+             <p class="small muted" style="margin:-2px 0 10px;text-align:center">話し終えると、そのまま答えを探します。文字でもどうぞ</p>`
+          : ''
+      }
+      <textarea id="q" rows="2" placeholder="${listener ? '文字で聞くときは、ここに' : '例：かぼちゃはいつとればいいですか？'}">${esc(draft)}</textarea>
       <div class="row" style="margin-top:8px">
-        <button class="btn primary" data-act="ask" style="flex:1">聞く</button>
-        ${listener ? `<button class="btn ${listening ? 'primary' : ''}" data-act="mic" aria-label="声で聞く">${MIC_SVG.replace(/44/g, '22')}${listening ? '終わる' : '声で'}</button>` : ''}
+        <button class="btn ${listener ? '' : 'primary'}" data-act="ask" style="flex:1">聞く</button>
       </div>
       <div class="chips" style="margin-top:10px"><span class="small muted">見本：</span>${samples
         .map((t) => `<button class="chip" data-act="sampleq" data-text="${esc(t)}">${esc(t)}</button>`)
@@ -253,6 +277,9 @@ main.addEventListener('click', async (e) => {
     render();
   } else if (act === 'who') {
     whoFilter = b.dataset.who;
+    render();
+  } else if (act === 'season') {
+    seasonFirst = !seasonFirst;
     render();
   } else if (act === 'goto') {
     tab = 'note';

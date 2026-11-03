@@ -4,7 +4,8 @@
   --ink: #2b2622;
   --muted: #6b625a;
   --line: #e4dacb;
-  --accent: #7a4a24; /* 柿渋の茶。色はこの1つだけ */
+  --accent: #7a4a24; /* 柿渋の茶。色はこの1つだけ（濃さだけ変える） */
+  --accent-mid: #b8906a;
   --accent-soft: #f3e9dc;
   --ok: #3f6b3a;
   --radius: 14px;
@@ -68,7 +69,15 @@ body.big .btn { min-height: 64px; font-size: 22px; border-radius: 16px; }
 .crop-head { display: flex; align-items: baseline; justify-content: space-between; margin: 24px 0 4px; border-bottom: 2px solid var(--ink); padding-bottom: 4px; }
 .crop-head h2 { margin: 0; }
 .note { border-left: 3px solid var(--line); padding: 6px 0 6px 12px; margin: 12px 0; }
+/* 左の帯：濃い＝家族・研修先の言葉／中＝同じ地区／薄い＝ほかの地区 */
+.note.near-1 { border-left-color: var(--accent); border-left-width: 5px; }
+.note.near-2 { border-left-color: var(--accent-mid); border-left-width: 5px; }
 .note.answer { border-left-color: var(--accent); }
+.chip.near { display: inline-block; white-space: nowrap; border-color: var(--accent); color: var(--accent); margin-left: 6px; padding: 0 7px; }
+/* 新人の画面：声で聞くを主役に */
+.btn.voice { width: 100%; min-height: 64px; font-size: 19px; margin-bottom: 8px; }
+.btn.voice.listening { background: #fff; color: var(--accent); box-shadow: 0 0 0 6px var(--accent-soft); animation: pulse-soft 1.4s infinite; }
+@keyframes pulse-soft { 50% { box-shadow: 0 0 0 12px var(--accent-soft); } }
 .note.state { opacity: 0.75; }
 .note .meta { font-size: 13px; color: var(--muted); }
 .note .src { margin-top: 6px; background: var(--accent-soft); border-radius: 10px; padding: 10px 12px; font-size: 15px; }
