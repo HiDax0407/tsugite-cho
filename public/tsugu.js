@@ -113,9 +113,10 @@ function renderNote() {
     })
     .join('');
   const lead =
-    me().role === 'family'
+    (me().role === 'family'
       ? `${esc(prod(me().familyOf).label)}が話したことと、町の農家さんが見せてくれた話です。言葉は話した人のまま。`
-      : `${esc(st.ctx.town.name.replace(/（.*?）/, ''))}の農家さんが「地域の新人にも」と見せてくれた話です。言葉は話した人のまま。`;
+      : `${esc(st.ctx.town.name.replace(/（.*?）/, ''))}の農家さんが「地域の新人にも」と見せてくれた話です。言葉は話した人のまま。`) +
+    '言葉の権利は話した本人にあり、見せる範囲は本人が決めています。';
   main.innerHTML = `<h1>引き継ぎノート</h1>
     <p class="lead">${lead}</p>
     <div class="stat">

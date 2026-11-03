@@ -12,7 +12,7 @@ import { COMMON_CROPS } from './rules.mjs';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SEED = join(ROOT, 'data', 'prepared', 'tsugite_producer.json');
 const REGION = join(ROOT, 'data', 'region_demo.json');
-const VERSION = 2;
+const VERSION = 3;
 
 export function todayJST(now = new Date()) {
   return new Date(now.getTime() + 9 * 3600 * 1000).toISOString().slice(0, 10);
@@ -65,7 +65,8 @@ export function createStore({
       ...reg.talks,
     ].sort((a, b) => a.date.localeCompare(b.date));
     for (const t of all) {
-      const talk = { ...t, speaker: t.producerId, source: 'prepared' };
+      // shareLog：だれに見せるかを本人が決めた記録（いつ・どの範囲）。最初の範囲も記録に残す
+      const talk = { ...t, speaker: t.producerId, source: 'prepared', share: t.share || 'family', shareLog: [{ date: t.date, share: t.share || 'family' }] };
       state.talks.push(talk);
       await addOrganized(talk, { rulesOnly: true }); // 撮影のたびに同じ「朝の状態」になるように
     }
@@ -103,7 +104,7 @@ export function createStore({
     const clean = String(text || '').trim();
     if (!clean) throw new Error('話が空です');
     const q = questionId ? state.questions.find((x) => x.id === questionId && x.status === '本人に聞く' && x.toId === producerId) : null;
-    const t = { id: nextId('t'), producerId, date: today(), speaker: producerId, text: clean, source: 'app', share: 'family', answersQuestionId: q ? q.id : null };
+    const t = { id: nextId('t'), producerId, date: today(), speaker: producerId, text: clean, source: 'app', share: 'family', shareLog: [{ date: today(), share: 'family' }], answersQuestionId: q ? q.id : null };
     state.talks.push(t);
     // 答えの作物：質問の作物（本人が作っていれば）→ 質問に近いノートの行の作物
     let startCrop = hintCrop && p.crops.includes(hintCrop) ? hintCrop : null; // 聞き返しへの答え
@@ -134,9 +135,12 @@ export function createStore({
     if (!SHARE_KEYS.includes(share)) throw new Error('見せる範囲が正しくありません');
     const t = talkOf(talkId);
     if (!t || t.producerId !== producerId) throw new Error('話が見つかりません'); // 自分の話だけ
-    t.share = share;
-    save();
-    return { talkId, share };
+    if (t.share !== share) {
+      t.share = share;
+      t.shareLog = [...(t.shareLog || []), { date: today(), share }]; // 変えた記録（本人が決めた日と範囲）
+      save();
+    }
+    return { talkId, share, shareLog: t.shareLog };
   }
 
   // 本人が「今はわからん」→ その質問はその本人のリストの最後へ回す

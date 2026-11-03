@@ -135,12 +135,16 @@ function renderTasks() {
 // 話したことと、それぞれを誰に見せているか（あとから変えられる）
 function renderTalks() {
   const list = [...st.talks].sort((a, b) => b.date.localeCompare(a.date));
+  const md = (d) => `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}`;
+  // 見せる範囲を決めた記録（いつ・どの範囲）。言葉の権利は本人にある、の裏づけ
+  const log = (t) => (t.shareLog || []).map((e) => `${md(e.date)} ${st.ctx.shareNames[e.share] || e.share}`).join(' → ');
   main.innerHTML = `<h1>話したこと</h1>
-    <p class="lead">だれに見せるかは、${esc(me().label)}が決めます。あとから変えられます。</p>
+    <p class="lead">ここにある言葉の権利は、${esc(me().label)}にあります。だれに見せるかは${esc(me().label)}が決め、あとから変えられます。変えた記録も残ります。</p>
     ${list
       .map(
         (t) => `<div class="card"><div class="small muted">${esc(when(t.date, st.ctx.today))}の話</div>
-        <p style="margin:4px 0 0">${esc(t.text)}</p>${shareButtons(t.id, t.share || 'family')}</div>`,
+        <p style="margin:4px 0 0">${esc(t.text)}</p>${shareButtons(t.id, t.share || 'family')}
+        <div class="small muted" style="margin-top:8px">見せる範囲の記録：${esc(log(t)) || 'まだありません'}</div></div>`,
       )
       .join('')}`;
 }

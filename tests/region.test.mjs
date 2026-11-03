@@ -83,6 +83,21 @@ test('新人の質問への答えは、聞いた人には届く。ほかの人�
   assert.ok(talkIdsOf(s.view('p2')).has(r.talk.id));
 });
 
+test('見せる範囲を決めた記録が話ごとに残る（最初の範囲と、本人が変えた日・範囲）', async () => {
+  const s = await fresh();
+  const t3 = s.all().talks.find((t) => t.id === 't3');
+  assert.deepEqual(t3.shareLog, [{ date: '2026-10-31', share: 'family' }]);
+  s.setShare({ producerId: 'p1', talkId: 't3', share: 'region' });
+  assert.deepEqual(t3.shareLog, [
+    { date: '2026-10-31', share: 'family' },
+    { date: '2026-11-02', share: 'region' },
+  ]);
+  s.setShare({ producerId: 'p1', talkId: 't3', share: 'region' }); // 同じ範囲なら記録は増えない
+  assert.equal(t3.shareLog.length, 2);
+  const r = await s.talk({ producerId: 'p5', text: '今日は袋詰め。' });
+  assert.deepEqual(r.talk.shareLog, [{ date: '2026-11-02', share: 'family' }]); // 話した時点で「家族だけ」から
+});
+
 test('本人の画面には、自分あての質問と自分の記録だけ', async () => {
   const s = await fresh();
   await s.ask({ askerId: 'p6', text: '里芋の種芋は、どこにしまっておけばいいですか？' });

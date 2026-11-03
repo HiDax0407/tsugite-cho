@@ -83,10 +83,10 @@ AI が「いちばんよいやり方」を判断することは**しません**�
 |---|---|---|
 | 話す | 本人 | 大きなボタンを押して話すだけ。返事は読み上げ。自分あての質問があれば、ここで**1つずつ**聞かれる。話したあと「この話を、だれに見せますか？」（家族だけ／地域の新人にも／町にも）を大きなボタンで選ぶ |
 | 次の作業 | 本人 | 話から作業カード（いつ・何を・誰が）。「済み」を押すだけ |
-| 話したこと | 本人 | 自分の話と、それぞれを誰に見せているか。あとから変えられる |
-| 引き継ぎノート | 継ぐ人・新人 | 見てよい話だけを、作物×時期ごとに。1行ごとに「誰が・いつ」と元の話（その文に印）にたどれる。家族・研修先の話が先に並ぶ |
-| 質問する | 継ぐ人・新人 | ノートにあれば、話した人の言葉で、近い人から順に（理由つき）。無ければ「○○さんに聞きます（選んだわけ：研修先・同じ地区…）」。作っている人がいなければ「聞ける人がいない」と出し、町に数だけ知らせる |
-| 地域の引き継ぎ帳 | 町の担当者 | 作物・地区ごとの数、ノートで答えが出た質問、本人に聞いている質問、聞ける人がいない質問。言葉は本人が「町にも」とした話だけ。質問した人の名前は出ない |
+| 話したこと | 本人 | 自分の話と、それぞれを誰に見せているか。あとから変えられる。「見せる範囲の記録」（いつ・どの範囲に決めたか）が話ごとに残る |
+| 引き継ぎノート | 継ぐ人・新人 | 見てよい話だけを、作物×時期ごとに。1行ごとに「誰が・いつ」と元の話（その文に印）にたどれる。行の左の帯で、家族・研修先（濃い）／同じ地区（中）／ほか（薄い）が見分けられる。「いまの時期の話を先に」で今月の話が上に来る |
+| 質問する | 継ぐ人・新人 | 「押して、声で聞く」が主役（畑で片手で。話し終えると、そのまま答えを探す）。ノートにあれば、話した人の言葉で、近い人から順に（理由つき）。無ければ「○○さんに聞きます（選んだわけ：研修先・同じ地区…）」。本人が答えると、同じ場所で「○○さんから答えが来ました」に変わる。作っている人がいなければ「聞ける人がいない」と出し、町に数だけ知らせる |
+| 地域の引き継ぎ帳 | 町の担当者 | 入力なし。作物・地区ごとの数、ノートで答えが出た質問、本人に聞いている質問、聞ける人がいない質問。「この画面に出ないもの」（質問した人の名前・人の評価・家族だけの話の中身）を画面の上に明示。「1枚で印刷」で、上に報告する用の数だけの A4 一枚。言葉は本人が「町にも」とした話だけ |
 
 ## 使い方（新人の目線・3分）
 
@@ -121,6 +121,17 @@ AI が「いちばんよいやり方」を判断することは**しません**�
 - **誰として動くかはサーバーが専用リンクの合言葉から決める**。画面の中で名乗ることはできず、自分の話・自分あての質問・自分の作業しか動かせない。見る人ごとに、見てよい話だけを返す
 - 大きな字。返事は読み上げ。聞き返しは1回に1つだけ。「今はわからん」で後回しにできる
 - 家族や研修生が横でスマホを持って聞き取ってもよい（それ自体が教わる時間になる）
+
+## ノウハウの保護（言葉の権利は、話した本人に）
+
+農家さんの段取りや判断は、特許のような形では守れません。つぎて帳は、代わりに次の形で「本人のもの」であることを確立します。
+
+- **出どころが必ず付く**：ノートの1行ごとに「誰が・いつ話したか」と元の言葉が付き、文を作ったり、ほかの人の言葉と混ぜたりしない
+- **見せる範囲は本人が話ごとに決め、いつでも変えられる**：最初は「家族だけ」。広げるのも戻すのも本人だけ（ほかの人の話の範囲は変えられない）
+- **決めた記録が残る**：話ごとに「いつ・どの範囲に決めたか」の記録（見せる範囲の記録）が本人の画面に出る
+- **許した範囲の外では使わない**：町の画面と「1枚で印刷」は数だけ。言葉が見えるのは本人が「町にも」とした話だけ。AI（Claude）にも、見る人が見てよい行しか送らない
+- **評価に使わない**：町の画面に人の評価・順位・農家さんごとの点数は無い。質問した人の名前も出ない
+- これから：本人が自分の話を全部消す／全部持ち出す（データは本人のもの）
 
 ## 試し方
 
@@ -206,5 +217,6 @@ MIT
 - **They ask questions**: if the notebook has it, the answer is the farmers' own words, closest person first (family → mentor → grows that crop → same district → years farming), with the reason shown. The AI never writes an answer. If not, the question goes to **one** nearest farmer, who is asked it the next time they talk; the answer flows back and no one has to ask it again.
 - **The town office sees numbers only**: notes by crop and district, questions answered from the notebook, questions with no one to ask. No names of askers, no evaluation of people.
 - No farming advice. Identity is decided on the server from the personal link, not from anything the page sends.
+- **The words belong to the farmer**: every line is attributed, the farmer sets and can change who may see each talk, every change is logged, the town office sees and prints numbers only, and the AI is shown only the lines the viewer may see.
 
 Context (Japan, official data): 1.036 million core farm workers, down 24.0% in five years, 69.6% aged 65+ (2025 Census), expected to fall to about a quarter (1.16M → 0.30M) in 20 years (MAFF); agriculture's value added is ¥4.97 trillion, 0.8% of GDP (2024); 58.8% of farms with a manager aged 65+ have no successor secured; 56.0% of new entrants say learning farming skills was a main difficulty, and only 23.1% make a living from farming in their first two years (National Chamber of Agriculture survey, 2025). All names, places and numbers inside the app are fictional. All code was written during the hackathon (from 2026-11-02 12:30 JST). Runs with `npm start` (Node.js; the only dependency is the official Anthropic SDK, loaded only when an API key is set; works without a key using a rule-based fallback). Claude only labels and selects (sentence labels, note line IDs, one short follow-up question); the code checks every result against the farmer's own sentences and what the viewer may see, and falls back to the rules on refusal, malformed output, or the daily call cap.
