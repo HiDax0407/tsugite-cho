@@ -9,9 +9,9 @@
   <link rel="stylesheet" href="/app.css" />
 </head>
 <body>
-  <header class="top">
-    <span style="display:flex;flex-direction:column;line-height:1.3"><span class="who">町の担当者の画面</span><span class="small muted" id="whoTitle"></span></span>
-    <span class="top-right"><button class="sizebtn" id="size" type="button" aria-pressed="false">字を大きく</button><span class="mode" id="mode"></span></span>
+  <header class="top" style="max-width:760px">
+    <div class="who-line"><span class="who">町の担当者の画面</span><span class="small muted" id="whoTitle"></span></div>
+    <div class="top-right"><button class="sizebtn" id="size" type="button" aria-pressed="false">字を大きく</button><span class="mode" id="mode"></span></div>
   </header>
   <main class="wrap" id="main" style="max-width:760px"></main>
   <script type="module" src="/machi.js"></script>
