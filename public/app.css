@@ -1,9 +1,9 @@
 :root {
-  --bg: #faf7f2;
+  --bg: #ffffff; /* 地は白（クリーム・生成り・薄いグレーの地は使わない） */
   --card: #ffffff;
   --ink: #2b2622;
   --muted: #6b625a;
-  --line: #e4dacb;
+  --line: #d8ccbc; /* 白地でも輪郭が出る濃さ */
   --accent: #7a4a24; /* 柿渋の茶。色はこの1つだけ（濃さだけ変える） */
   --accent-mid: #b8906a;
   --accent-soft: #f3e9dc;
@@ -153,6 +153,10 @@ body.big .btn { min-height: 64px; font-size: 22px; border-radius: 16px; }
 .hero img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; background: var(--accent-soft); }
 .hero figcaption { position: absolute; right: 8px; bottom: 6px; font-size: 11px; color: #fff; background: rgba(43, 38, 34, 0.55); border-radius: 99px; padding: 1px 8px; }
 @media (min-width: 760px) { .hero img { border-radius: 0 0 var(--radius) var(--radius); } }
+@media (min-width: 900px) {
+  .hero { max-width: none; height: clamp(480px, 60vh, 640px); }
+  .hero img { width: 100%; height: 100%; aspect-ratio: auto; object-fit: cover; object-position: 50% 55%; border-radius: 0; }
+}
 .brand { display: flex; align-items: center; gap: 10px; font-size: 34px; margin: 18px 0 6px; }
 .brand img { border-radius: 10px; }
 .points { list-style: none; padding: 0; margin: 14px 0 18px; display: grid; gap: 8px; counter-reset: p; }
