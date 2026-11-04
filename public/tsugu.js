@@ -1,4 +1,4 @@
-// 継ぐ人・新人の画面：引き継ぎノート／質問する。
+// 継ぐ人・新人の画面：聞く／ノート。最初は「聞く」（次の一手は1つ：押して声で聞くか、見本の質問を押す）。
 // 見えるのは、本人が見せてよいとした話だけ。1行ごとに、誰が・いつ話したかと元の言葉にたどれる。
 // 無いことは答えを作らず、いちばん近い本人1人に聞く。
 import { api, esc, when, makeListener, MIC_SVG, poll, KEY, noKey } from '/common.js';
@@ -8,7 +8,7 @@ const main = document.getElementById('main');
 sizeToggle();
 let st = null;
 let demo = null;
-let tab = 'note';
+let tab = 'ask';
 let cropFilter = '全部';
 let whoFilter = '全員';
 let openSrc = new Set();
@@ -92,7 +92,7 @@ function renderNote() {
   const cropsSeen = [...new Set(st.notes.map((n) => n.crop))];
   const crops = [...cropsSeen.filter((c) => c !== '畑全体'), ...(cropsSeen.includes('畑全体') ? ['畑全体'] : [])];
   const whos = [...new Set(st.notes.map((n) => n.producerId))].sort((a, b) => rank({ producerId: a }) - rank({ producerId: b }));
-  const asking = st.questions.filter((q) => q.status === '本人に聞く').length;
+  const asking = st.questions.filter((q) => q.status === '本人に聞く');
   // 今日あたらしく入った行（朝とくらべて増えた分）
   const today = st.notes.filter((n) => n.date === st.ctx.today && talkOf(n.talkId)?.source === 'app').length;
   const shown = cropFilter === '全部' ? crops : [cropFilter];
@@ -113,18 +113,22 @@ function renderNote() {
       return `<div class="crop-head"><h2>${esc(c)}</h2><span class="small muted">${nowN ? `<b>${month}月の話 ${nowN}行</b>・` : ''}${esc(seasons)}の話</span></div>${lines.map(noteLine).join('')}`;
     })
     .join('');
+  // 説明は1文（言葉の権利は話した本人に）
   const lead =
-    (me().role === 'family'
-      ? `${esc(prod(me().familyOf).label)}が話したことと、町の農家さんが見せてくれた話です。言葉は話した人のまま。`
-      : `${esc(st.ctx.town.name.replace(/（.*?）/, ''))}の農家さんが「地域の新人にも」と見せてくれた話です。言葉は話した人のまま。`) +
-    '言葉の権利は話した本人にあり、見せる範囲は本人が決めています。';
+    me().role === 'family'
+      ? `${esc(prod(me().familyOf).label)}が話したことと、町の農家さんが見せてくれた言葉が、そのまま並びます（言葉の権利は話した本人に）。`
+      : `${esc(st.ctx.town.name.replace(/（.*?）/, ''))}の農家さんが「地域の新人にも」と見せてくれた言葉が、そのまま並びます（言葉の権利は話した本人に）。`;
+  // 聞いている質問は数ではなく「川端さんに聞いています（1）」の文で
+  const byTo = new Map();
+  for (const q of asking) byTo.set(q.toId, (byTo.get(q.toId) || 0) + 1);
+  const askingText = [...byTo].map(([id, n]) => `${esc(prod(id).label)}に聞いています（${n}）`).join('・');
   main.innerHTML = `<h1>引き継ぎノート</h1>
     <p class="lead">${lead}</p>
-    <div class="stat">
+    <div class="stat two">
       <div><b>${whos.length}</b><span class="small">人の農家さん</span></div>
       <div><b>${st.notes.length}</b><span class="small">行のノート${today ? `<br><span class="badge" style="margin:2px 0 0">今日 +${today}</span>` : ''}</span></div>
-      <div><b>${asking}</b><span class="small">本人に聞いている</span></div>
     </div>
+    ${askingText ? `<p class="asking"><b>${askingText}</b><br><span class="small muted">答えが来たら「聞く」に届きます</span></p>` : ''}
     <div class="chips" style="margin-top:14px"><button class="chip ${seasonFirst ? 'on' : ''}" data-act="season" aria-pressed="${seasonFirst}">いまの時期（${month}月）の話を先に</button></div>
     <div class="chips">${['全部', ...crops]
       .map((c) => `<button class="chip ${c === cropFilter ? 'on' : ''}" data-act="crop" data-crop="${esc(c)}">${esc(c)}</button>`)
@@ -200,29 +204,25 @@ function renderAsk() {
   const inNote = st.questions.filter((q) => q.status === 'ノートにあった').reverse();
   const s = seen();
   const samples = demo?.sample_questions_by?.[me().id] || demo?.sample_questions || [];
-  // いま聞いた質問の答えは入力欄の上に出す（小さい画面でも切れない）。本人が答えたら、同じ場所で「答えが来た」に変わる
+  const big = samples.slice(0, 2); // 押すだけで聞ける見本は2つ。残りは「文字で聞く」の中
+  const rest = samples.slice(2);
+  // いま聞いた質問の答え。本人が答えたら、同じ場所で「答えが来た」に変わる
   const current = lastResult ? qOf(lastResult.id) || lastResult : null;
-  main.innerHTML = `<h1>質問する</h1>
-    <p class="lead">ノートにあれば、話した人の言葉で答えます。無ければ答えを作らず、いちばん近い農家さん1人に聞きます。</p>
-    ${current ? resultHtml(current) : ''}
-    <div class="card">
-      ${
-        listener
-          ? `<button class="btn primary voice ${listening ? 'listening' : ''}" data-act="mic" aria-pressed="${listening}">${MIC_SVG.replace(/44/g, '30')}<span>${listening ? '聞いています　終わったら押す' : '押して、声で聞く'}</span></button>
-             <p class="small muted" style="margin:-2px 0 10px;text-align:center">話し終えると、そのまま答えを探します。文字でもどうぞ</p>`
-          : ''
-      }
-      <textarea id="q" rows="2" placeholder="${listener ? '文字で聞くときは、ここに' : '例：かぼちゃはいつとればいいですか？'}">${esc(draft)}</textarea>
-      <div class="row" style="margin-top:8px">
-        <button class="btn ${listener ? '' : 'primary'}" data-act="ask" style="flex:1">聞く</button>
-      </div>
-      <div class="chips" style="margin-top:10px"><span class="small muted">見本：</span>${samples
-        .map((t) => `<button class="chip" data-act="sampleq" data-text="${esc(t)}">${esc(t)}</button>`)
-        .join('')}</div>
-    </div>
+  const micLabel = listening ? '聞いています<br><span style="font-size:16px">終わったら押す</span>' : '押して、<br>声で聞く';
+  main.innerHTML = `<h1>聞く</h1>
+    <p class="lead">農家さんの言葉がそのまま出ます。AI は答えを作りません。</p>
+    ${listener ? `<button class="mic ask-mic ${listening ? 'listening' : ''}" data-act="mic" aria-pressed="${listening}" aria-label="押して、声で聞く">${MIC_SVG}${micLabel}</button>` : ''}
+    ${big.length ? `<p class="small muted" style="margin:0 0 6px">見本の質問（押すだけで聞けます）</p>` : ''}
+    ${big.map((t) => `<button class="btn wide sample" data-act="sampleq" data-text="${esc(t)}">${esc(t)}</button>`).join('')}
+    <details class="card" ${listener ? '' : 'open'}><summary>文字で聞く</summary>
+      <textarea id="q" rows="2" style="margin-top:10px" placeholder="例：かぼちゃはいつとればいいですか？">${esc(draft)}</textarea>
+      <button class="btn primary wide" data-act="ask" style="margin-top:8px">聞く</button>
+      ${rest.length ? `<div class="chips" style="margin-top:10px">${rest.map((t) => `<button class="chip" data-act="sampleq" data-text="${esc(t)}">${esc(t)}</button>`).join('')}</div>` : ''}
+    </details>
+    <div id="result">${current ? resultHtml(current) : ''}</div>
     ${
       answered.length
-        ? `<h2>農家さんから答えが来た</h2>${answered
+        ? `<h2>届いた答え</h2>${answered
             .map(
               (q) => `<div class="card"><div class="small muted">${esc(when(q.date, st.ctx.today))}に聞いた ${s.has(q.id) ? '' : '<span class="badge">新しい</span>'}</div>
           <div><b>${esc(q.text)}</b></div>
@@ -231,16 +231,15 @@ function renderAsk() {
             .join('')}`
         : ''
     }
-    <h2>農家さんに聞いている（${asking.length}）</h2>
     ${
       asking.length
-        ? asking
+        ? `<h2>聞いていること</h2>${asking
             .map(
               (q) => `<div class="card"><div class="small muted">${esc(prod(q.toId).label)}に聞いています</div><b>${esc(q.text)}</b>
           ${q.missing ? `<div class="small muted">まだ聞いていないこと：${esc(q.missing)}</div>` : ''}</div>`,
             )
-            .join('')
-        : `<p class="muted">いまはありません。</p>`
+            .join('')}`
+        : ''
     }
     ${noOne.length ? `<h2>聞ける人がいない（${noOne.length}）</h2>${noOne.map((q) => `<div class="card"><b>${esc(q.text)}</b><div class="small muted">町の担当者に数だけ知らせています</div></div>`).join('')}` : ''}
     ${inNote.length ? `<h2>ノートにあった質問</h2>${inNote.map((q) => `<div class="card"><b>${esc(q.text)}</b>${sourcesHtml(q)}</div>`).join('')}` : ''}`;
@@ -293,8 +292,7 @@ main.addEventListener('click', async (e) => {
     lastResult = null; // ノートで見たら、質問の画面は次の質問を聞ける形に戻す
     render();
   } else if (act === 'sampleq') {
-    draft = b.dataset.text;
-    render();
+    await ask(b.dataset.text); // 見本の質問は、押すだけで聞く
   } else if (act === 'mic') {
     if (listening) listener.stop();
     else {
@@ -316,7 +314,8 @@ async function ask(text) {
   setBy(lastResult.by);
   draft = '';
   await refresh();
-  window.scrollTo(0, 0); // 答えは上に出る
+  // 答えは、マイクと見本の下に出る。小さい画面でも読めるように、答えの所まで送る
+  document.getElementById('result')?.scrollIntoView({ block: 'start' });
 }
 
 main.addEventListener('input', (e) => {

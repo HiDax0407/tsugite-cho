@@ -46,6 +46,9 @@ const ok = (label, cond, detail = '') => {
   const fb = page.frameLocator('iframe[title="川端さんの画面"]');
   const fd = page.frameLocator('iframe[title="大西さんの画面"]');
   const fc = page.frameLocator('iframe[title="町の担当者の画面"]');
+  await fa.locator('h1:has-text("聞く")').waitFor();
+  ok('0:00 青木さんの画面は「聞く」から（マイクと見本の質問2つ）', (await fa.locator('button[data-act="sampleq"].sample').count()) === 2 && (await fa.locator('button[data-act="mic"]').isVisible()));
+  await fa.locator('.tabs button[data-tab="note"]').click();
   await fa.locator('h1:has-text("引き継ぎノート")').waitFor();
   const stat0 = await text(fa.locator('.stat'));
   ok('0:00 青木さんのノートは 29 行', /29 \/ 行のノート/.test(stat0), stat0);
@@ -53,8 +56,7 @@ const ok = (label, cond, detail = '') => {
 
   // 0:20 かぼちゃの質問 → 2人の言葉 → 元の話
   await fa.locator('.tabs button[data-tab="ask"]').click();
-  await fa.locator('button[data-act="sampleq"]:has-text("かぼちゃはいつ")').click();
-  await fa.locator('button[data-act="ask"]').click();
+  await fa.locator('button[data-act="sampleq"]:has-text("かぼちゃはいつ")').click(); // 押すだけで聞く
   const kabocha = fa.locator('.card.accent').first();
   await kabocha.waitFor();
   const kabochaText = await text(kabocha);
@@ -70,7 +72,6 @@ const ok = (label, cond, detail = '') => {
   // 0:45 石灰の質問 → 川端さん1人に聞く
   await fa.locator('.tabs button[data-tab="ask"]').click();
   await fa.locator('button[data-act="sampleq"]:has-text("石灰")').click();
-  await fa.locator('button[data-act="ask"]').click();
   const lime = fa.locator('.card.accent').first();
   await lime.waitFor();
   const limeText = await text(lime);

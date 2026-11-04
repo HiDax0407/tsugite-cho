@@ -17,32 +17,44 @@
   <main class="wrap" style="padding-top:4px;padding-bottom:40px">
     <h1 class="brand"><img src="/img/icon-180.png" alt="" width="40" height="40" />つぎて帳</h1>
     <p class="lead" style="font-size:18px;color:var(--ink)">農家さんが<b>話すだけ</b>で、段取りと判断のコツが<b>継ぐ人と、地域の新人のノート</b>になる。</p>
+
+    <h2>見る順番</h2>
+    <div id="links"><p class="muted">読み込み中…</p></div>
+
+    <h2>できること3つ</h2>
     <ol class="points">
       <li><b>聞けば、近い人の言葉がすぐ出る</b><span>AI は答えを作りません。誰が・どこで・いつ話したかつき</span></li>
       <li><b>無ければ、近い農家さん1人だけに聞く</b><span>答えはノートに入り、もう二度聞かなくていい</span></li>
       <li><b>だれに見せるかは、話した本人が決める</b><span>町には数だけ。足りない分野が見える</span></li>
     </ol>
 
-    <div id="links"><p class="muted">読み込み中…</p></div>
-
-    <div class="card">
-      <div class="small muted">はじめての方へ（3分）</div>
+    <details class="card" id="more">
+      <summary>ほかの画面</summary>
+      <div id="moreLinks"></div>
+      <div class="small muted" style="margin-top:14px">はじめての方へ（3分）</div>
       <ol style="margin:6px 0 0;padding-left:1.3em">
-        <li>青木さん（研修生）の画面で「引き継ぎノート」を開く。町の3人の農家さんが見せてくれた言葉が並んでいます</li>
-        <li>「質問する」で見本の「かぼちゃはいつ…」を聞く → 2人の言葉が、近い人から順に出ます</li>
-        <li>「石灰はどのくらい…」を聞く → ノートに無いので、研修先の川端さん1人に届きます</li>
+        <li>青木さん（研修生）の画面で、見本の「かぼちゃはいつ…」を押す → 2人の農家さんの言葉が、近い人から順に出ます</li>
+        <li>「石灰はどのくらい…」を押す → ノートに無いので、研修先の川端さん1人に届きます</li>
         <li>川端さんの画面で、その質問に答える（デモ用の「見本の話を入れる」でも可）→ 青木さんに届きます</li>
-        <li>町の担当者の画面で、ノートで答えが出た数・聞ける人がいない作物を見る</li>
+        <li>町の担当者の画面で、聞ける人がいない作物と、数を見ます</li>
+        <li>青木さんの「ノート」を開くと、町の3人の農家さんが見せてくれた言葉が並び、今日の答えも入っています</li>
       </ol>
+    </details>
+
+    <div class="card" id="demoTools">
+      <div class="small muted">デモ用</div>
+      <div class="row" style="margin-top:6px">
+        <button class="btn ghost" id="reset">最初の状態に戻す</button>
+        <button class="btn ghost" id="shoot" hidden>撮影用：最初の状態にして3つを並べる</button>
+      </div>
     </div>
-    <p><button class="btn ghost" id="reset">最初の状態に戻す（デモ用）</button>
-      <button class="btn ghost" id="shoot" hidden>撮影用：最初の状態にして3つを並べる</button></p>
     <p class="notice">Built with Claude: Japan 2026 応募作品。人名・地名・数字はすべて架空のデモデータです。農業のやり方の助言はしません。
     デモなので、この入口に全員の専用リンクを並べています。実際に使うときは、町が一人ひとりに専用リンク（QR カード）を配ります。</p>
   </main>
   <script type="module">
     import { esc } from '/common.js';
     const box = document.getElementById('links');
+    const more = document.getElementById('moreLinks');
     let bothUrl = '';
     const res = await fetch('/api/demo-links');
     if (!res.ok) {
@@ -50,24 +62,27 @@
     } else {
       const people = await res.json();
       const url = (p) => `${p.role === 'producer' ? '/honnin' : p.role === 'town' ? '/machi' : '/tsugu'}?k=${encodeURIComponent(p.key)}`;
-      const card = (p, sub, big = false) => `<a class="card ${big ? 'accent' : ''}" href="${url(p)}" style="display:block;text-decoration:none;color:inherit">
-          <div class="small muted">${esc(sub)}</div>
-          <div style="font-size:${big ? 22 : 19}px;font-weight:700">${esc(p.label)}の画面 →</div>
-          <div class="small">${esc(p.title)}</div></a>`;
+      const byId = Object.fromEntries(people.map((p) => [p.id, p]));
       const by = (role) => people.filter((p) => p.role === role);
-      const ids = Object.fromEntries(people.map((p) => [p.id, p.key]));
-      bothUrl = `/both.html#${encodeURIComponent(JSON.stringify({ a: ids.p6, b: ids.p5, c: ids.town, d: ids.p4 }))}`;
+      // 見る順番の3人：新人（青木さん）→ その研修先の本人（川端さん）→ 町
+      const first = byId.p6 || by('newcomer')[0];
+      const second = byId.p5 || by('producer')[0];
+      const third = by('town')[0];
+      const order = (n, p, title, sub) =>
+        p ? `<a class="order" href="${url(p)}"><span class="num">${n}</span><span><b>${esc(title)}</b><span class="small">${esc(sub)}</span></span></a>` : '';
+      box.innerHTML =
+        order(1, first, `${first?.label}が聞く`, '新しく農業を始めた人。押して声で聞くか、見本の質問を押すだけ') +
+        order(2, second, `${second?.label}が話す`, '農家さん本人。押して話すだけ（ログインなし）') +
+        order(3, third, '町が数を見る', '町の担当者。数だけで、人の名前は出ない');
+      // ほかの画面（折りたたみの中）
+      const used = new Set([first?.id, second?.id, third?.id]);
+      const rest = people.filter((p) => !used.has(p.id));
+      bothUrl = `/both.html#${encodeURIComponent(JSON.stringify({ a: first?.key, b: second?.key, c: third?.key, d: byId.p4?.key }))}`;
+      const link = (href, title, sub) => `<a class="order small-order" href="${href}"><span><b>${esc(title)}</b><span class="small">${esc(sub)}</span></span></a>`;
+      more.innerHTML =
+        rest.map((p) => link(url(p), `${p.label}の画面`, p.role === 'family' ? `家を継ぐ人・${p.title}` : p.role === 'producer' ? `農家さん本人・${p.title}` : p.title)).join('') +
+        link(bothUrl, '3つを並べて見る（パソコン向け）', '青木さん・川端さん・町の担当者を横に並べて、流れを追えます');
       document.getElementById('shoot').hidden = false;
-      box.innerHTML = `
-        ${by('newcomer').map((p) => card(p, '新しく農業を始めた人（主役）', true)).join('')}
-        ${by('family').map((p) => card(p, '家を継ぐ人')).join('')}
-        <h2>農家さん本人（押して話すだけ・ログインなし）</h2>
-        ${by('producer').map((p) => card(p, '本人')).join('')}
-        <h2>町</h2>
-        ${by('town').map((p) => card(p, '町の担当者（数だけを見る）')).join('')}
-        <a class="card" href="${bothUrl}" style="display:block;text-decoration:none;color:inherit">
-          <div style="font-size:18px;font-weight:700">3つを並べて見る（パソコン向け）→</div>
-          <div class="small">青木さんの質問が川端さんの「話す」に届き、答えが返り、町の数が変わる様子が見えます</div></a>`;
     }
     // 最初の架空データに戻す（青木さんのノート 29 行・石灰の答えなし・にんにくは「聞ける人がいない」）
     async function reset(ask = true) {
