@@ -1,5 +1,6 @@
 // Claude API とのつなぎ口（公式 SDK @anthropic-ai/sdk）。
-// キー（ANTHROPIC_API_KEY）が無いあいだは使わない。キーが入っていれば、起動時に SDK を読み込む。
+// キー（ANTHROPIC_API_KEY）が無いあいだは使わない。キーが入っていれば、初めて使うときに SDK を読み込む
+// （読み込み時に見ると、.env を読む前に動いてしまい、キーがあっても未接続のままになる）。
 //
 // 守ること（プログラムの側で確かめる。Claude の答えを信じきらない）
 //   ・Claude には「印を付ける」ことだけを頼む。画面に出す言葉は、必ず本人が話した文そのものから取る
@@ -10,24 +11,31 @@
 import { splitSentences, organizeTalk, detectCrop, similarity, urgencyOf } from './rules.mjs';
 import { closeness } from './region.mjs';
 
-// 聞き返し・言い換え＝速い返事のため軽いモデル／まとめ・照合＝上位モデル
-const MODEL_MAIN = process.env.CLAUDE_MODEL_MAIN || 'claude-opus-5-5';
-const MODEL_LIGHT = process.env.CLAUDE_MODEL_LIGHT || 'claude-haiku-5-5';
-const MAX_CALLS = Number(process.env.CLAUDE_MAX_CALLS_PER_DAY || 200);
+// 聞き返し・言い換え＝速い返事のため軽いモデル／まとめ・照合＝上位モデル（使うたびに環境変数を見る）
+const modelMain = () => process.env.CLAUDE_MODEL_MAIN || 'claude-opus-5-5';
+const modelLight = () => process.env.CLAUDE_MODEL_LIGHT || 'claude-haiku-5-5';
+const maxCalls = () => Number(process.env.CLAUDE_MAX_CALLS_PER_DAY || 200);
 
+// SDK は初めて使うときに作る。tried：作ろうとしたか（SDK が無いときは一度だけ知らせて、見本の規則で動く）
 let client = null;
-if (process.env.ANTHROPIC_API_KEY) {
+let tried = false;
+async function getClient() {
+  if (tried) return client;
+  tried = true;
+  if (!process.env.ANTHROPIC_API_KEY) return null;
   try {
     const { default: Anthropic } = await import('@anthropic-ai/sdk');
     client = new Anthropic({ timeout: 60_000, maxRetries: 2 }); // キーは環境変数から（コードに書かない）
   } catch (e) {
     console.error('Claude の SDK を読み込めませんでした（npm install をしてください）。見本の規則で動きます：', e.message);
   }
+  return client;
 }
 
-// テストでは、本物の API の代わりに偽物の client を差し込む
+// テストでは、本物の API の代わりに偽物の client を差し込む（null で元に戻す）
 export function useClientForTest(fake) {
-  client = fake;
+  client = fake || null;
+  tried = !!fake;
   counter.day = '';
   counter.calls = 0;
 }
@@ -41,20 +49,24 @@ function spend() {
     counter.day = today();
     counter.calls = 0;
   }
-  if (counter.calls >= MAX_CALLS) throw new Error(`今日の Claude の呼び出しが上限（${MAX_CALLS}回）に達しました`);
+  if (counter.calls >= maxCalls()) throw new Error(`今日の Claude の呼び出しが上限（${maxCalls()}回）に達しました`);
   counter.calls += 1;
 }
 
+// つながっているか：キーがあれば（まだ SDK を作る前でも）つながっているとみなす。SDK が作れなかったあとは false
 export function enabled() {
-  return !!client && (counter.day !== today() || counter.calls < MAX_CALLS);
+  const has = tried ? !!client : !!process.env.ANTHROPIC_API_KEY;
+  return has && (counter.day !== today() || counter.calls < maxCalls());
 }
 
 export function stats() {
-  return { ...counter, max: MAX_CALLS, models: { main: MODEL_MAIN, light: MODEL_LIGHT } };
+  return { ...counter, max: maxCalls(), models: { main: modelMain(), light: modelLight() } };
 }
 
 // 決まった形（JSON スキーマ）で答えさせる。断られた・途中で切れたときは失敗として扱う
 async function ask({ model, system, user, schema, effort, maxTokens }) {
+  const c = await getClient();
+  if (!c) throw new Error('Claude につながっていません（キーが無いか、SDK がありません）');
   spend();
   const params = {
     model,
@@ -65,9 +77,9 @@ async function ask({ model, system, user, schema, effort, maxTokens }) {
   };
   // 上位モデルが安全のため断ったときは、サーバー側で別のモデルが引き継ぐ（Haiku には無い）
   const res =
-    model === MODEL_LIGHT
-      ? await client.messages.create(params)
-      : await client.beta.messages.create({ ...params, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' });
+    model === modelLight()
+      ? await c.messages.create(params)
+      : await c.beta.messages.create({ ...params, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' });
   counter.inputTokens += res.usage?.input_tokens || 0;
   counter.outputTokens += res.usage?.output_tokens || 0;
   if (res.stop_reason === 'refusal') throw new Error('Claude が答えませんでした（refusal）');
@@ -133,7 +145,7 @@ ${ctx.startCrop ? `この話は「${ctx.startCrop}」についての質問への
 - tasks：本人がこれからやる作業の文だけ。when は話の中の言葉をそのまま。前の作業に続くなら type「続き」、「〜たら」なら「条件」
 
 ${sentences.map((s, i) => `${i}：${s}`).join('\n')}`;
-  const out = await ask({ model: MODEL_MAIN, system: RULES, user, schema, effort: 'medium', maxTokens: 8000 });
+  const out = await ask({ model: modelMain(), system: RULES, user, schema, effort: 'medium', maxTokens: 8000 });
 
   // 手元の見本の結果を土台にして、Claude の印のうち確かめられたものだけを使う
   const base = organizeTalk(talk, ctx);
@@ -197,7 +209,7 @@ export async function answer(questionText, { notes, producers, viewer, crops }) 
 迷ったら入れないでください（答えないで本人に聞くほうが安全です）。
 
 ${notes.map((n) => `${n.id}｜${label(n.producerId)}｜${n.crop}｜${n.quote}`).join('\n')}`;
-  const out = await ask({ model: MODEL_MAIN, system: RULES, user, schema, effort: 'medium', maxTokens: 4000 });
+  const out = await ask({ model: modelMain(), system: RULES, user, schema, effort: 'medium', maxTokens: 4000 });
 
   // 見えている行の番号だけを使う
   const byId = new Map(notes.map((n) => [n.id, n]));
@@ -240,7 +252,7 @@ export async function followup({ newTasks, newLines }) {
 
 ${newLines.map((l, i) => `${i}：${l.quote}`).join('\n')}
 ${newTasks.length ? `\nこの話からできた作業：${newTasks.map((t) => `${t.when}「${t.quote}」`).join('／')}` : ''}`;
-  const out = await ask({ model: MODEL_LIGHT, system: RULES, user, schema, effort: 'low', maxTokens: 1000 });
+  const out = await ask({ model: modelLight(), system: RULES, user, schema, effort: 'low', maxTokens: 1000 });
   if (!out.ask) return null;
   const q = String(out.question || '').trim();
   // 質問の形で、短く、助言を含まないものだけ
@@ -258,7 +270,7 @@ export async function rephrase(question) {
   };
   const user = `次の質問を、高齢の農家さんに読み上げて伝わる、やさしい話し言葉の1文にしてください。聞いている中身・作物・言葉の意味は変えないでください。
 質問：「${question.text}」`;
-  const out = await ask({ model: MODEL_LIGHT, system: RULES, user, schema, effort: 'low', maxTokens: 500 });
+  const out = await ask({ model: modelLight(), system: RULES, user, schema, effort: 'low', maxTokens: 500 });
   const t = String(out.text || '').trim();
   // 中身が変わっていないか（元の質問の漢字・カタカナの言葉が残っているか）を確かめる
   const hasWords = similarity(question.text, question.text) > 0; // ひらがなだけの質問は言葉の照らし合わせができない

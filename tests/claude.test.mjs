@@ -140,3 +140,31 @@ test('最初の状態に戻すときは Claude を呼ばない（撮影のたび
   assert.equal(fake.calls.length, 1);
   assert.deepEqual(q.by[0], { role: '照合', by: 'Claude Opus 5.5' });
 });
+
+test('キーを import のあとに入れても（.env を読む順が遅くても）つながった扱いになる。消せば見本に戻る', () => {
+  claude.useClientForTest(null);
+  const before = process.env.ANTHROPIC_API_KEY;
+  delete process.env.ANTHROPIC_API_KEY;
+  assert.equal(brain.mode(), '見本');
+  process.env.ANTHROPIC_API_KEY = 'test-key'; // 偽の値（本物のキーの形ではない）
+  try {
+    assert.equal(brain.mode(), 'claude'); // SDK をまだ作っていなくても、キーがあればつながっている
+    assert.equal(claude.stats().models.main, 'claude-opus-5-5');
+  } finally {
+    if (before === undefined) delete process.env.ANTHROPIC_API_KEY;
+    else process.env.ANTHROPIC_API_KEY = before;
+  }
+  assert.equal(brain.mode(), '見本');
+});
+
+test('モデル名と上限は、使うときに環境変数を見る（.env をあとから読んでも効く）', () => {
+  const before = process.env.CLAUDE_MODEL_LIGHT;
+  process.env.CLAUDE_MODEL_LIGHT = 'claude-sonnet-5-5';
+  try {
+    assert.equal(claude.stats().models.light, 'claude-sonnet-5-5');
+  } finally {
+    if (before === undefined) delete process.env.CLAUDE_MODEL_LIGHT;
+    else process.env.CLAUDE_MODEL_LIGHT = before;
+  }
+  assert.equal(claude.stats().max, 40); // このファイルの最初で入れた値
+});

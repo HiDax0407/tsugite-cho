@@ -1,8 +1,9 @@
 // つぎて帳のサーバー（Node.js の標準機能だけ）。
 //   npm start → http://localhost:8793
+import './src/env.mjs'; // .env を最初に読む（ほかの import より先に動かすため、いちばん上に置く）
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { extname, join, normalize, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createStore } from './src/store.mjs';
@@ -10,14 +11,6 @@ import { createKeys } from './src/keys.mjs';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const PUBLIC = join(ROOT, 'public');
-
-// .env があれば読む（キーはリポジトリに入れない）
-if (existsSync(join(ROOT, '.env'))) {
-  for (const line of readFileSync(join(ROOT, '.env'), 'utf8').split('\n')) {
-    const m = line.match(/^\s*([A-Z_][A-Z0-9_]*)\s*=\s*(.*)\s*$/);
-    if (m && !(m[1] in process.env)) process.env[m[1]] = m[2];
-  }
-}
 
 const PORT = Number(process.env.PORT || 8793);
 const HOST = process.env.HOST || '127.0.0.1';
