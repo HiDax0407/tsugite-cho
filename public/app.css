@@ -50,6 +50,8 @@ h2 { font-size: 20px; margin: 22px 0 8px; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
 .chip { font-size: 12px; border: 1px solid var(--line); border-radius: 99px; padding: 1px 9px; color: var(--muted); background: #fff; }
 .chip.on { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+button.chip { min-height: 32px; padding: 4px 12px; }
+.chips + .chips { margin-top: 10px; }
 .badge { display: inline-block; font-size: 12px; font-weight: 700; color: #fff; background: var(--accent); border-radius: 99px; padding: 0 8px; margin-left: 6px; }
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--ink); background: #fff; color: var(--ink); border-radius: 12px; padding: 10px 16px; min-height: 48px; }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
@@ -104,6 +106,8 @@ body.big .btn { min-height: 64px; font-size: 22px; border-radius: 16px; }
 .note .src { margin-top: 6px; background: var(--accent-soft); border-radius: 10px; padding: 10px 12px; font-size: 15px; }
 .note .src mark { background: #fff; outline: 1px solid var(--accent); color: inherit; }
 .linkish { border: 0; background: none; color: var(--accent); padding: 0; text-decoration: underline; font-size: 13px; }
+.demo-hint { font-size: 12px; color: var(--muted); opacity: 0.8; }
+.demo-hint .linkish { font-size: 12px; color: var(--muted); }
 .stat { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .stat div { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 10px; text-align: center; }
 .stat b { display: block; font-size: 26px; line-height: 1.2; }
@@ -121,7 +125,7 @@ body.big .btn { min-height: 64px; font-size: 22px; border-radius: 16px; }
 .who-head .small { font-weight: 400; color: var(--muted); }
 
 /* 町の画面 */
-.chip.no { text-decoration: line-through; text-decoration-color: var(--accent); text-decoration-thickness: 2px; }
+.chip.no::before { content: '×'; color: var(--accent); font-weight: 700; margin-right: 3px; }
 .not-shown { padding: 10px 14px; }
 .print-only { display: none; }
 @media print {

@@ -100,7 +100,7 @@ function renderTalk() {
   // デモ用の見本は、押して話すボタンのすぐ下（質問が届いていても画面の中に収まる）
   const demoLink =
     sample && (phase === 'idle' || phase === 'listening')
-      ? `<p class="small muted" style="text-align:center;margin:0 0 10px">デモ用：<button class="linkish" data-act="sample">見本の話を入れる（声の代わり）</button></p>`
+      ? `<p class="demo-hint" style="text-align:center;margin:0 0 10px">デモ用：<button class="linkish" data-act="sample">見本の話を入れる（声の代わり）</button></p>`
       : '';
   const typed = phase === 'saved' ? '' : `
     <details class="card"><summary>文字で入れる</summary>
