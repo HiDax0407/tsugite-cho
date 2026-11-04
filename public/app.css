@@ -125,9 +125,10 @@ body.big .btn { min-height: 64px; font-size: 22px; border-radius: 16px; }
 .who-head { font-weight: 700; margin-top: 12px; }
 .who-head .small { font-weight: 400; color: var(--muted); }
 
-/* 町の画面 */
-.chip.no::before { content: '×'; color: var(--accent); font-weight: 700; margin-right: 3px; }
-.not-shown { padding: 10px 14px; }
+/* 町の画面：先頭の一行（聞ける人がいない作物）と、出ないものの一文 */
+.headline { font-size: 20px; margin: 4px 0 8px; }
+.headline b { color: var(--accent); }
+.not-shown { font-size: 15px; color: var(--muted); margin: 20px 0 8px; }
 .print-only { display: none; }
 @media print {
   @page { size: A4; margin: 12mm; }

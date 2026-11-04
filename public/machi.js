@@ -24,29 +24,14 @@ function render() {
     .join('');
   const today = st.ctx.today;
   const d = new Date(today + 'T00:00:00+09:00');
+  // 先頭の一行：聞ける人がいない作物（質問はあるのに、町に作っている農家さんのノートが無い）
+  const gaps = s.byCrop.filter((c) => c.growers === 0 && c.noOne > 0);
+  const gapText = gaps.length ? gaps.map((c) => `${esc(c.crop)}（${c.noOne}）`).join('・') : 'いまはありません';
   main.innerHTML = `<div class="print-only print-head"><b>${esc(st.ctx.town.name)} ${esc(st.ctx.town.section)}</b>　地域の引き継ぎ帳（数だけ）　${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日時点<br>
       <span class="small">この紙に、人の名前・人の評価・農家さんの話の中身は入っていません。人名・地名・数字はすべて架空のデモデータです。</span></div>
     <h1 class="no-print">地域の引き継ぎ帳</h1>
-    <p class="lead no-print">農家さんの話がどれだけ残り、新しく農業を始めた人の質問がどこへ流れているかを、<b>数で</b>見ます。</p>
-    <div class="card not-shown no-print" aria-label="この画面に出ないもの">
-      <div class="small muted">この画面に出ないもの</div>
-      <div class="chips"><span class="chip no">質問した人の名前</span><span class="chip no">人の評価・順位</span><span class="chip no">「家族だけ」の話の中身</span><span class="chip no">農家さんごとの点数</span></div>
-      <div class="small muted" style="margin-top:6px">入力はいりません。言葉が見えるのは、本人が「町にも」とした話だけです。</div>
-    </div>
-    <div class="row no-print" style="margin:4px 0 2px"><button class="btn" data-act="print">1枚で印刷（数だけ・A4）</button>
-      <span class="small muted" style="align-self:center">上に報告する用。名前と話の中身は入りません</span></div>
-
-    <h2>話と質問</h2>
-    <div class="stat four">
-      <div><b>${s.producers}</b><span class="small">人の農家さんが話している<br>（研修の受け入れ ${s.trainers}）</span></div>
-      <div><b>${s.lines}</b><span class="small">行のノート<br>（${s.talks}回の話）</span></div>
-      <div><b>${q.inNote}</b><span class="small">ノートで答えが出た質問<br>（本人の手を借りずに）</span></div>
-      <div><b>${q.answered}</b><span class="small">本人が話して答えた質問</span></div>
-      <div><b>${q.waiting}</b><span class="small">本人に聞いている質問</span></div>
-      <div><b>${q.noOne}</b><span class="small">聞ける人がいない質問</span></div>
-      <div><b>${s.shares.region + s.shares.town}</b><span class="small">行を、本人が地域に<br>見せてくれている</span></div>
-      <div><b>${s.shares.family}</b><span class="small">行は家族だけ<br>（中身は町にも見えない）</span></div>
-    </div>
+    <p class="lead no-print">町に届くのは数だけです。入力はいりません。</p>
+    <p class="headline">聞ける人がいない作物：<b>${gapText}</b></p>
 
     <h2>作物ごと</h2>
     <div class="scroll-x"><table class="tbl">
@@ -58,6 +43,14 @@ function render() {
         .join('')}</tbody>
     </table></div>
     <p class="small muted">色のついた行（印刷では下線）は、質問はあるのに、町の中に作っている農家さんのノートが無い作物です。</p>
+
+    <h2>話と質問</h2>
+    <div class="stat four">
+      <div><b>${s.producers}</b><span class="small">話している農家さん</span></div>
+      <div><b>${s.lines}</b><span class="small">行のノート</span></div>
+      <div><b>${q.waiting}</b><span class="small">本人に聞いている質問</span></div>
+      <div><b>${gaps.length}</b><span class="small">聞ける人がいない作物</span></div>
+    </div>
 
     <h2>地区ごと</h2>
     <div class="scroll-x"><table class="tbl">
@@ -80,6 +73,10 @@ function render() {
     <p class="small muted" style="margin:0 0 8px">言葉の権利は話した本人にあります。本人が許した範囲の外（印刷・ほかの資料）には使いません。</p>
     ${town || '<p class="muted">まだありません。</p>'}
     </div>
+
+    <p class="no-print not-shown">出ないもの：質問した人の名前・人の評価や順位・「家族だけ」の話の中身・農家さんごとの点数</p>
+    <div class="row no-print"><button class="btn" data-act="print">1枚で印刷（数だけ・A4）</button>
+      <span class="small muted" style="align-self:center">上に報告する用。名前と話の中身は入りません</span></div>
 
     <p class="notice">人名・地名・数字はすべて架空のデモデータです。この画面は人を評価するためのものではありません。農業のやり方の助言もしません。</p>`;
 }

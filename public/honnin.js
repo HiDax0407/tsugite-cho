@@ -56,18 +56,17 @@ function renderTalk() {
   if (phase === 'saved') {
     // 返事だけを見せる（次の質問は返事の中で1つだけ）
   } else if (q) {
+    // 届いた質問があるときだけ、マイクの上に「青木さんから：…」と大きな「読み上げ」
     top = `<div class="card accent ask-card">
-      <div class="label">${esc(q.askerVoice)}が聞きたいこと${left > 1 ? `（あと${left}つ）` : ''}</div>
+      <div class="label">${esc(q.askerVoice)}から${left > 1 ? `（あと${left}つ）` : ''}：</div>
       <p class="quote" style="margin:6px 0 12px">${esc(q.text)}</p>
-      <div class="row">
-        <button class="btn" data-act="hear-q">声で聞く</button>
-        <button class="btn ghost" data-act="later">今はわからん</button>
-      </div>
+      <button class="btn primary wide" data-act="hear-q">読み上げ</button>
+      <p style="margin:10px 0 0;text-align:right"><button class="linkish" data-act="later">今はわからん</button></p>
     </div>`;
   } else if (gapQuestion) {
     top = `<div class="card accent ask-card"><div class="label">ひとつだけ聞かせてください</div>
       <p style="margin:6px 0 12px">${esc(gapQuestion.text)}</p>
-      <button class="btn" data-act="hear-gap">声で聞く</button></div>`;
+      <button class="btn primary wide" data-act="hear-gap">読み上げ</button></div>`;
   } else {
     top = `<h1>今日の畑のこと、<br>話してください</h1><p class="lead">いつもの言葉のままで大丈夫です。</p>`;
   }
