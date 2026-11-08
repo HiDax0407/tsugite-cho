@@ -133,3 +133,73 @@ export function setBy(list) {
   }, 20000);
   paintMode();
 }
+
+// 「使い方」：見出しの下のチップを押すと、その下に白いカード（3行の説明＋読み上げ＋閉じる）が開く。もう一度押すと閉じる。
+//   覆いかぶさるモーダルにはしない。lines は文の配列か、いまの画面に合わせて配列を返す関数（新人の画面は「聞く」「ノート」で文が違う）
+export function helpToggle(lines) {
+  const btn = document.getElementById('help');
+  const card = document.getElementById('helpCard');
+  if (!btn || !card) return { repaint() {} };
+  let open = false;
+  let speaking = false;
+  const canSpeak = 'speechSynthesis' in window;
+  const texts = () => (typeof lines === 'function' ? lines() : lines) || [];
+  const paintSpeak = () => {
+    const b = card.querySelector('[data-help="speak"]');
+    if (!b) return;
+    b.textContent = speaking ? '読み上げを止める' : '読み上げ';
+    b.setAttribute('aria-pressed', String(speaking));
+  };
+  // 自分が読み上げているときだけ止める（本人の画面のほかの読み上げは邪魔しない）
+  const stop = () => {
+    if (speaking && canSpeak) speechSynthesis.cancel();
+    speaking = false;
+    paintSpeak();
+  };
+  const paint = () => {
+    btn.setAttribute('aria-expanded', String(open));
+    card.hidden = !open;
+    if (!open) return;
+    card.innerHTML = `<div class="help-lines">${texts()
+      .map((t) => `<p>${esc(t)}</p>`)
+      .join('')}</div>
+      <div class="row">${canSpeak ? '<button class="btn" type="button" data-help="speak" aria-pressed="false">読み上げ</button>' : ''}
+      <button class="btn ghost" type="button" data-help="close">閉じる</button></div>`;
+    paintSpeak();
+  };
+  btn.addEventListener('click', () => {
+    open = !open;
+    if (!open) stop();
+    paint();
+  });
+  card.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-help]');
+    if (!b) return;
+    if (b.dataset.help === 'close') {
+      open = false;
+      stop();
+      paint();
+    } else if (b.dataset.help === 'speak') {
+      if (speaking) return stop(); // 途中でもう一度押すと止まる
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(texts().join(' '));
+      u.lang = 'ja-JP';
+      u.rate = 0.9;
+      u.onend = u.onerror = () => {
+        speaking = false;
+        paintSpeak();
+      };
+      speaking = true;
+      paintSpeak();
+      speechSynthesis.speak(u);
+    }
+  });
+  return {
+    // 画面（タブ）が変わったとき、開いていれば文を入れ替える（読み上げ中なら止める）
+    repaint() {
+      if (!open) return;
+      stop();
+      paint();
+    },
+  };
+}

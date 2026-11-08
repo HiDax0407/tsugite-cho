@@ -1,10 +1,11 @@
 // 町の担当者の画面「地域の引き継ぎ帳」：数だけを見る。
 // 言葉が見えるのは、本人が「町にも」とした話だけ。質問した人の名前は出さない。人を評価しない。
 import { api, esc, when, poll, KEY, noKey } from '/common.js';
-import { paintMode, sizeToggle } from '/common.js';
+import { paintMode, sizeToggle, helpToggle } from '/common.js';
 
 const main = document.getElementById('main');
 sizeToggle();
+helpToggle(['数だけが届きます。名前や話の中身は入りません。', '『聞ける人がいない作物』が、支援の当てどころです。', '『1枚で印刷』で、数だけの A4 が出ます。']);
 let st = null;
 
 const prod = (id) => st.ctx.producers.find((p) => p.id === id) || { label: '本人', district: '' };

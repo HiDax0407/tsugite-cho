@@ -1,9 +1,10 @@
 // 本人（農家さん）の画面：話す／次の作業／話したこと。打つ・覚える操作をさせない。
 // 見せる範囲だけは本人が決める（大きなボタン3つから選ぶ。最初は「家族だけ」）。
 import { api, esc, speak, makeListener, MIC_SVG, poll, KEY, noKey, when } from '/common.js';
-import { paintMode, setBy } from '/common.js';
+import { paintMode, setBy, helpToggle } from '/common.js';
 
 const main = document.getElementById('main');
+helpToggle(['1 大きなボタンを押して、いつもの言葉で話します。', '2 届いた質問は読み上げられます。', '3 だれに見せるかは、あなたが決めます。']);
 let st = null;
 let demo = null;
 let tab = 'talk';

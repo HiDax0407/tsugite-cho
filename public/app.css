@@ -26,6 +26,11 @@ button { font: inherit; cursor: pointer; }
 .top .top-right { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
 .sizebtn { min-height: 44px; font-size: 13px; color: var(--muted); border: 1px solid var(--line); background: #fff; border-radius: 99px; padding: 2px 14px; white-space: nowrap; }
 .sizebtn[aria-pressed='true'] { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+/* 「使い方」：チップを押すと、見出しの下に白いカード（線囲み・本文と同じ字の大きさ・覆いかぶさらない） */
+.helpbtn[aria-expanded='true'] { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+.help-card { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; margin: 12px 0 0; }
+.help-card p { margin: 0 0 4px; }
+.help-card .row { margin-top: 12px; }
 /* 「字を大きく」：継ぐ人・新人・町の画面を、ひとまわり大きい字に */
 body.large { font-size: 20px; }
 body.large h1 { font-size: 30px; }

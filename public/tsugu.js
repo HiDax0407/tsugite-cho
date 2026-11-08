@@ -2,13 +2,19 @@
 // 見えるのは、本人が見せてよいとした話だけ。1行ごとに、誰が・いつ話したかと元の言葉にたどれる。
 // 無いことは答えを作らず、いちばん近い本人1人に聞く。
 import { api, esc, when, makeListener, MIC_SVG, poll, KEY, noKey } from '/common.js';
-import { paintMode, setBy, sizeToggle } from '/common.js';
+import { paintMode, setBy, sizeToggle, helpToggle } from '/common.js';
 
 const main = document.getElementById('main');
 sizeToggle();
 let st = null;
 let demo = null;
 let tab = 'ask';
+// 「使い方」（タブごとに文が違う）
+const help = helpToggle(() =>
+  tab === 'note'
+    ? ['農家さんが『地域の新人にも』と見せてくれた言葉です。', '作物や人で絞れます。', '『元の話を見る』で、話した日と全文が読めます。']
+    : ['1 マイクを押して、畑のことを声で聞きます。', '2 ノートにあれば、近い人の言葉がすぐ出ます。', '3 無ければ、いちばん近い農家さん一人に届き、答えがノートに入ります。'],
+);
 let cropFilter = '全部';
 let whoFilter = '全員';
 let openSrc = new Set();
@@ -326,6 +332,7 @@ document.querySelector('.tabs').addEventListener('click', (e) => {
   const b = e.target.closest('[data-tab]');
   if (!b) return;
   tab = b.dataset.tab;
+  help.repaint(); // 開いていれば、そのタブの使い方に入れ替える
   render();
   window.scrollTo(0, 0);
 });
